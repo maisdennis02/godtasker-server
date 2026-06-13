@@ -1,0 +1,1061 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-06-13T00:00:00.000Z",
+  "__export_source": "godtasker.generator",
+  "resources": [
+    {
+      "_id": "wrk_godtasker",
+      "_type": "workspace",
+      "name": "GodTasker API",
+      "description": "GodTasker backend — REST + real-time chat. Users are peers (no workers).",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_gt",
+      "_type": "environment",
+      "parentId": "wrk_godtasker",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:3333",
+        "token": ""
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "base_url",
+          "token"
+        ]
+      },
+      "metaSortKey": 1
+    },
+    {
+      "_id": "fld_0001gtk",
+      "_type": "request_group",
+      "parentId": "wrk_godtasker",
+      "name": "Auth",
+      "metaSortKey": 0
+    },
+    {
+      "_id": "req_0002gtk",
+      "_type": "request",
+      "parentId": "fld_0001gtk",
+      "name": "1. Register user",
+      "method": "POST",
+      "url": "{{ _.base_url }}/users",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"user_name\": \"alice\",\n  \"email\": \"alice@test.com\",\n  \"password\": \"password123\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 1
+    },
+    {
+      "_id": "req_login_session",
+      "_type": "request",
+      "parentId": "fld_0001gtk",
+      "name": "2. Login (get token)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/sessions",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"alice@test.com\",\n  \"password\": \"password123\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 2
+    },
+    {
+      "_id": "fld_0003gtk",
+      "_type": "request_group",
+      "parentId": "wrk_godtasker",
+      "name": "Dashboard",
+      "metaSortKey": 3
+    },
+    {
+      "_id": "req_0004gtk",
+      "_type": "request",
+      "parentId": "fld_0003gtk",
+      "name": "Dashboard by id",
+      "method": "GET",
+      "url": "{{ _.base_url }}/dashboard/1?user_id=1&worker_id=1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 4
+    },
+    {
+      "_id": "fld_0005gtk",
+      "_type": "request_group",
+      "parentId": "wrk_godtasker",
+      "name": "People / Users",
+      "metaSortKey": 5
+    },
+    {
+      "_id": "req_0006gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "List users",
+      "method": "GET",
+      "url": "{{ _.base_url }}/users",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 6
+    },
+    {
+      "_id": "req_0007gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Get user by id",
+      "method": "GET",
+      "url": "{{ _.base_url }}/users/1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 7
+    },
+    {
+      "_id": "req_0008gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Follow a user",
+      "method": "POST",
+      "url": "{{ _.base_url }}/users/following",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"user_email\": \"alice@test.com\",\n  \"target_email\": \"bob@test.com\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 8
+    },
+    {
+      "_id": "req_0009gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Unfollow a user",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/users/following",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"user_email\": \"alice@test.com\",\n  \"target_email\": \"bob@test.com\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 9
+    },
+    {
+      "_id": "req_0010gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Following list",
+      "method": "GET",
+      "url": "{{ _.base_url }}/users/following?contactName=alice&nameFilter=",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 10
+    },
+    {
+      "_id": "req_0011gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Following count",
+      "method": "GET",
+      "url": "{{ _.base_url }}/users/following/count?contactName=alice",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 11
+    },
+    {
+      "_id": "req_0012gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Following individual",
+      "method": "GET",
+      "url": "{{ _.base_url }}/users/following/individual?user_id=1&target_id=2",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 12
+    },
+    {
+      "_id": "req_0013gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Followers list",
+      "method": "GET",
+      "url": "{{ _.base_url }}/users/followers?userName=bob&nameFilter=",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 13
+    },
+    {
+      "_id": "req_0014gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Followers count",
+      "method": "GET",
+      "url": "{{ _.base_url }}/users/followers/count?userName=bob",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 14
+    },
+    {
+      "_id": "req_0015gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Blocked list",
+      "method": "GET",
+      "url": "{{ _.base_url }}/users/block",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 15
+    },
+    {
+      "_id": "req_0016gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Flagged list",
+      "method": "GET",
+      "url": "{{ _.base_url }}/users/flag",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 16
+    },
+    {
+      "_id": "req_0017gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Update profile",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/users",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"first_name\": \"Alice\",\n  \"bio\": \"hi\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 17
+    },
+    {
+      "_id": "req_0018gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Block user",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/users/block",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"alice@test.com\",\n  \"blocker_email\": \"spam@test.com\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 18
+    },
+    {
+      "_id": "req_0019gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Unblock user",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/users/unblock",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"alice@test.com\",\n  \"unblocker_email\": \"spam@test.com\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 19
+    },
+    {
+      "_id": "req_0020gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Flag user",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/users/flag",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"bob@test.com\",\n  \"flagger_email\": \"alice@test.com\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 20
+    },
+    {
+      "_id": "req_0021gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Update points",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/users/points/1",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"points\": 10\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 21
+    },
+    {
+      "_id": "req_0022gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Update notifications",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/users/notifications/1",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"notification_token\": \"abc\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 22
+    },
+    {
+      "_id": "req_0023gtk",
+      "_type": "request",
+      "parentId": "fld_0005gtk",
+      "name": "Delete user",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/users/1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 23
+    },
+    {
+      "_id": "fld_0024gtk",
+      "_type": "request_group",
+      "parentId": "wrk_godtasker",
+      "name": "Offerings",
+      "metaSortKey": 24
+    },
+    {
+      "_id": "req_0025gtk",
+      "_type": "request",
+      "parentId": "fld_0024gtk",
+      "name": "List a user's offerings",
+      "method": "GET",
+      "url": "{{ _.base_url }}/offerings?creator_id=1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 25
+    },
+    {
+      "_id": "req_0026gtk",
+      "_type": "request",
+      "parentId": "fld_0024gtk",
+      "name": "Create offering",
+      "method": "POST",
+      "url": "{{ _.base_url }}/offerings",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Mow the lawn\",\n  \"description\": \"front + back\",\n  \"price\": 40,\n  \"display_in_profile\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 26
+    },
+    {
+      "_id": "req_0027gtk",
+      "_type": "request",
+      "parentId": "fld_0024gtk",
+      "name": "Request offering (spawns task)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/offerings/1/request",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 27
+    },
+    {
+      "_id": "req_0028gtk",
+      "_type": "request",
+      "parentId": "fld_0024gtk",
+      "name": "Update offering",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/offerings/1",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Mow + trim\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 28
+    },
+    {
+      "_id": "req_0029gtk",
+      "_type": "request",
+      "parentId": "fld_0024gtk",
+      "name": "Delete offering",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/offerings/1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 29
+    },
+    {
+      "_id": "fld_0030gtk",
+      "_type": "request_group",
+      "parentId": "wrk_godtasker",
+      "name": "Tasks",
+      "metaSortKey": 30
+    },
+    {
+      "_id": "req_0031gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Send a task",
+      "method": "POST",
+      "url": "{{ _.base_url }}/tasks",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"assignee_email\": \"bob@test.com\",\n  \"name\": \"My task\",\n  \"description\": \"details\",\n  \"start_date\": \"2026-06-20T10:00:00Z\",\n  \"due_date\": \"2026-06-25T10:00:00Z\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 31
+    },
+    {
+      "_id": "req_0032gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "List tasks I sent",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks?assigneeNameFilter=",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 32
+    },
+    {
+      "_id": "req_0033gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Received: unfinished",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks/unfinished?assigneeID=1&nameFilter=",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 33
+    },
+    {
+      "_id": "req_0034gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Received: finished",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks/finished?assigneeID=1&nameFilter=",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 34
+    },
+    {
+      "_id": "req_0035gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Received: canceled",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks/canceled?assigneeID=1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 35
+    },
+    {
+      "_id": "req_0036gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Received: counts",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks/count?assigneeID=1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 36
+    },
+    {
+      "_id": "req_0037gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Sent: unfinished",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks/user/unfinished?requesterID=1&nameFilter=&assigneeNameFilter=",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 37
+    },
+    {
+      "_id": "req_0038gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Sent: finished",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks/user/finished?requesterID=1&nameFilter=&assigneeNameFilter=",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 38
+    },
+    {
+      "_id": "req_0039gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Sent: canceled",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks/user/canceled?requesterID=1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 39
+    },
+    {
+      "_id": "req_0040gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Sent: counts",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks/user/count?requesterID=1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 40
+    },
+    {
+      "_id": "req_0041gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Task details",
+      "method": "GET",
+      "url": "{{ _.base_url }}/tasks/1/details",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 41
+    },
+    {
+      "_id": "req_0042gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Confirm task",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/tasks/confirm/1",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"score\": 5\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 42
+    },
+    {
+      "_id": "req_0043gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Update task",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/tasks/1",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"updated\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 43
+    },
+    {
+      "_id": "req_0044gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Cancel task",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/tasks/1/cancel",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"status\": {\n    \"comment\": \"cancelled\"\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 44
+    },
+    {
+      "_id": "req_0045gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Revive task",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/tasks/1/revive",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"status\": {\n    \"comment\": \"revived\"\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 45
+    },
+    {
+      "_id": "req_0046gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Update status",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/tasks/1/status",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"status\": {\n    \"comment\": \"in progress\"\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 46
+    },
+    {
+      "_id": "req_0047gtk",
+      "_type": "request",
+      "parentId": "fld_0030gtk",
+      "name": "Delete task",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/tasks/1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 47
+    },
+    {
+      "_id": "fld_0048gtk",
+      "_type": "request_group",
+      "parentId": "wrk_godtasker",
+      "name": "Chat / Messages",
+      "metaSortKey": 48
+    },
+    {
+      "_id": "req_0049gtk",
+      "_type": "request",
+      "parentId": "fld_0048gtk",
+      "name": "List my conversations",
+      "method": "GET",
+      "url": "{{ _.base_url }}/messages?user_email=alice@test.com",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 49
+    },
+    {
+      "_id": "req_0050gtk",
+      "_type": "request",
+      "parentId": "fld_0048gtk",
+      "name": "Start/resolve chat",
+      "method": "POST",
+      "url": "{{ _.base_url }}/messages/start",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"user_email\": \"alice@test.com\",\n  \"worker_email\": \"bob@test.com\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 50
+    },
+    {
+      "_id": "req_0051gtk",
+      "_type": "request",
+      "parentId": "fld_0048gtk",
+      "name": "Send chat message",
+      "method": "POST",
+      "url": "{{ _.base_url }}/messages/1/send",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"sender_email\": \"alice@test.com\",\n  \"recipient_email\": \"bob@test.com\",\n  \"body\": \"Hello!\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 51
+    },
+    {
+      "_id": "req_0052gtk",
+      "_type": "request",
+      "parentId": "fld_0048gtk",
+      "name": "Thread messages",
+      "method": "GET",
+      "url": "{{ _.base_url }}/messages/1/thread",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 52
+    },
+    {
+      "_id": "req_0053gtk",
+      "_type": "request",
+      "parentId": "fld_0048gtk",
+      "name": "Find conversation (my side)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/messages/user?user_email=alice@test.com&worker_email=bob@test.com",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 53
+    },
+    {
+      "_id": "req_0054gtk",
+      "_type": "request",
+      "parentId": "fld_0048gtk",
+      "name": "Delete conversation",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/messages/1",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 54
+    },
+    {
+      "_id": "fld_0055gtk",
+      "_type": "request_group",
+      "parentId": "wrk_godtasker",
+      "name": "Files & Signatures",
+      "metaSortKey": 55
+    },
+    {
+      "_id": "req_0056gtk",
+      "_type": "request",
+      "parentId": "fld_0055gtk",
+      "name": "List files",
+      "method": "GET",
+      "url": "{{ _.base_url }}/files",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 56
+    },
+    {
+      "_id": "req_0057gtk",
+      "_type": "request",
+      "parentId": "fld_0055gtk",
+      "name": "List signatures",
+      "method": "GET",
+      "url": "{{ _.base_url }}/signatures",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_login_session', 'b64::JC50b2tlbg==::46b', 'never', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": 57
+    }
+  ]
+}

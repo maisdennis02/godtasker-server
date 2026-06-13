@@ -1,0 +1,15 @@
+node_modules
+/dist
+/tmp
+.env
+*.log
+
+# Local uploads
+/tmp/uploads
+
+# Firebase service account JSON keys (must come from env)
+**/firebase-adminsdk*.json
+**/godtasker-*-firebase-adminsdk-*.json
+
+# OS
+.DS_Store
