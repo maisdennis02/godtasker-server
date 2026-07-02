@@ -70,15 +70,20 @@ class TaskController {
     io.emit(`task_create_${assignee_email}`, 'Task Created');
 
     if (assignee.notification_token) {
+      // `created`/`due` are optional client-localized labels (legacy apps send
+      // them); default to English so newer clients don't render "undefined".
+      const pushBody = `${created || 'New task'}: ${name} | ${
+        due || 'due'
+      } ${parsedDueDate}`;
       const pushMessage = {
         notification: {
           title: `${requester.user_name}`,
-          body: `${created}: ${name} | ${due} ${parsedDueDate}`,
+          body: pushBody,
         },
         data: {
           channelId: 'godtaskerChannel01',
           title: `${requester.user_name}`,
-          message: `${created}: ${name} | ${due} ${parsedDueDate}`,
+          message: pushBody,
         },
         android: { notification: { sound: 'default' } },
         apns: { payload: { aps: { sound: 'default' } } },
