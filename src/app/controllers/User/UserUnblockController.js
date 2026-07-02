@@ -8,19 +8,14 @@ class UserUnblockController {
       where: { email },
     });
 
-    const user_blocked_list = user.blocked_list;
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    user_blocked_list.map(u => {
-      if (u === unblocker_email) {
-        const position = user_blocked_list.indexOf(u);
-        user_blocked_list.splice(position, 1);
-      }
-      return user_blocked_list;
-    });
+    // New array (filtered) so Sequelize persists the change.
+    const blocked_list = (user.blocked_list ?? []).filter(
+      e => e !== unblocker_email
+    );
 
-    await user.update({
-      blocked_list: user_blocked_list,
-    });
+    await user.update({ blocked_list });
 
     return res.json(user);
   }

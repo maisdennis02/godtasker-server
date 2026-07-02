@@ -4,26 +4,29 @@ import profileImgUpload from '../middlewares/profile';
 class FileController {
   async store(req, res) {
     // Upload to AWS bucket
-    profileImgUpload(req, res, error => {
-      // console.log('requestOkokok', req.file);
+    profileImgUpload(req, res, async error => {
       if (error) {
-        // console.log('errors', error);
-        res.json({ error });
-      } else {
-        // If File not found
-        if (req.file === undefined) {
-          res.json('Error: No File Selected');
-        }
-        // If Success
-        const imageName = req.file.key;
-        const imageLocation = req.file.location;
-        File.create({ name: imageName, path: imageLocation });
-        // Save the file name into database into profile model
-        res.json({
-          image: imageName,
-          location: imageLocation,
-        });
+        return res.status(400).json({ error: error.message || error });
       }
+      // If File not found
+      if (req.file === undefined) {
+        return res.status(400).json({ error: 'No file selected' });
+      }
+      // If Success
+      const imageName = req.file.key;
+      const imageLocation = req.file.location;
+      // Persist the File record and return its id so callers can link it
+      // (e.g. as a User avatar via PUT /users { avatar_id }).
+      const file = await File.create({
+        name: imageName,
+        path: imageLocation,
+      });
+      return res.json({
+        id: file.id,
+        image: imageName,
+        location: imageLocation,
+        url: file.url,
+      });
     });
   }
 

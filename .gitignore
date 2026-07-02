@@ -2,6 +2,9 @@ node_modules
 /dist
 /tmp
 .env
+# Never commit env backups — they contain real secrets
+.env.bak*
+*.bak.*
 *.log
 
 # Local uploads
@@ -10,6 +13,7 @@ node_modules
 # Firebase service account JSON keys (must come from env)
 **/firebase-adminsdk*.json
 **/godtasker-*-firebase-adminsdk-*.json
+**/firebase-service-account.json
 
 # OS
 .DS_Store

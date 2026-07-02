@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.env
+.env.*
+!.env.example
+*.bak.*
+npm-debug.log*
+play-service-account.json
+insomnia_godtasker.json
+.vscode
+.claude
+README.md

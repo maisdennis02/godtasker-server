@@ -2,6 +2,7 @@ import firebaseAdmin from 'firebase-admin';
 import Task from '../../models/Task';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
+import { subtaskProgress } from '../../utils/subtasks';
 
 class TaskWorkerSubtaskNotificationController {
   // ---------------------------------------------------------------------------
@@ -42,6 +43,10 @@ class TaskWorkerSubtaskNotificationController {
       canceled_at,
       due_date,
     });
+
+    // Keep the progress bar authoritative on the server, derived from the
+    // subtasks the client just sent.
+    task = await task.update({ status_bar: subtaskProgress(task.sub_task_list) });
 
     // Firebase Notification ***************************************************
     const requester = await User.findByPk(task.requester_id);

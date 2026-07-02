@@ -1,0 +1,61 @@
+# Render Blueprint — one-click provision of the API + managed Postgres.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Usage: push this repo to GitHub, then in Render → "New" → "Blueprint",
+# point it at the repo. Render reads this file and creates both resources.
+# Secrets marked `sync: false` are left blank for you to fill in the dashboard.
+
+databases:
+  - name: godtasker-db
+    databaseName: godtasker
+    user: godtasker
+    region: ohio # AWS us-east-2 — same region as the S3 bucket
+    plan: basic-256mb # free tier expires after 30 days; basic-256mb is persistent
+
+services:
+  - type: web
+    name: godtasker-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: ohio
+    plan: starter # keep-alive instance; do NOT use free (it sleeps + drops WebSockets)
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: godtasker-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      # JWT signing secret — Render generates a strong random value once.
+      - key: APP_SECRET
+        generateValue: true
+      # Public URL of this service (Render injects its own external URL).
+      - key: APP_URL
+        fromService:
+          type: web
+          name: godtasker-api
+          property: host
+      # ── AWS S3 (file uploads) ──
+      - key: AWS_REGION
+        value: us-east-2 # bucket godtaskerfiles lives in us-east-2
+      - key: AWS_BUCKET
+        value: godtaskerfiles
+      - key: AWS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      # ── Firebase Admin / FCM push (optional; blank = push disabled) ──
+      - key: FCM_PROJECT_ID
+        sync: false
+      - key: FCM_PRIVATE_KEY_ID
+        sync: false
+      - key: FCM_PRIVATE_KEY
+        sync: false
+      - key: FCM_CLIENT_EMAIL
+        sync: false
+      - key: FCM_CLIENT_ID
+        sync: false
+      - key: FCM_DATABASE_URL
+        sync: false

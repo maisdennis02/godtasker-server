@@ -8,6 +8,7 @@ import Task from '../../models/Task';
 import File from '../../models/File';
 import { io } from '../../../http';
 import logger from '../../../lib/logger';
+import { subtaskProgress } from '../../utils/subtasks';
 
 class TaskController {
   async store(req, res) {
@@ -55,6 +56,7 @@ class TaskController {
       sub_task_list,
       task_attributes,
       status,
+      status_bar: subtaskProgress(sub_task_list),
       points,
       confirm_photo,
       start_date,
@@ -144,7 +146,10 @@ class TaskController {
       task_attributes,
       score,
       status,
-      status_bar,
+      // Derive progress from the subtasks when they're part of the update;
+      // otherwise honor the value the client sent.
+      status_bar:
+        sub_task_list !== undefined ? subtaskProgress(sub_task_list) : status_bar,
       start_date,
       initiated_at,
       canceled_at,

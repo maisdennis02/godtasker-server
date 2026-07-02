@@ -15,6 +15,9 @@ class UserFollowingController {
     if (!follower || !target) {
       return res.status(404).json({ error: 'User not found' });
     }
+    if (follower.id === target.id) {
+      return res.status(400).json({ error: 'You cannot follow yourself' });
+    }
 
     await follower.addFollowing(target.id);
 

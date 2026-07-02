@@ -20,7 +20,11 @@ class DashboardController {
     });
 
     // following count ---------------------------------------------------------
-    const following = await user.getFollowing();
+    // Exclude deactivated accounts (consistent with the followers count and the
+    // People list) and the self-follow row so the count matches what the UI shows.
+    const following = await user.getFollowing({
+      where: { canceled_at: null, id: { [Op.ne]: id } },
+    });
     const countFollowing = following.length;
 
     // followers count ---------------------------------------------------------

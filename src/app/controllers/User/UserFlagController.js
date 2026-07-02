@@ -22,21 +22,20 @@ class UserFlagController {
       where: { email },
     });
 
-    let user_flagged_list = user.flagged_list;
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    if (user_flagged_list === null) {
-      user_flagged_list = [];
-      user_flagged_list.push(flagger_email);
-    } else {
-      user_flagged_list.push(flagger_email);
+    const current = user.flagged_list ?? [];
+
+    // Don't let the same person flag twice — keeps flag_count meaningful.
+    if (current.includes(flagger_email)) {
+      return res.json(user);
     }
 
-    const counter = user.flag_count + 1;
+    // New array so Sequelize persists the change.
+    const flagged_list = [...current, flagger_email];
+    const flag_count = (user.flag_count ?? 0) + 1;
 
-    await user.update({
-      flag_count: counter,
-      flagged_list: user_flagged_list,
-    });
+    await user.update({ flag_count, flagged_list });
 
     return res.json(user);
   }

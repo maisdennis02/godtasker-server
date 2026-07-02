@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import authMiddleware from './app/middlewares/auth';
+import { authLimiter } from './app/middlewares/rateLimit';
 
 import DashboardController from './app/controllers/DashboardController';
 import FileController from './app/controllers/FileController';
@@ -47,9 +48,12 @@ import UserUpdateNoPhotoController from './app/controllers/User/UserUpdateNoPhot
 
 const routes = new Router();
 
-// ─── Public routes ──────────────────────────────────────────────────────────
-routes.post('/sessions', SessionController.store);
-routes.post('/users', UserController.store);
+// ─── Health check (public; used by the host's uptime/health probe) ───────────
+routes.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+// ─── Public routes (rate-limited against credential stuffing) ────────────────
+routes.post('/sessions', authLimiter, SessionController.store);
+routes.post('/users', authLimiter, UserController.store);
 
 // ─── Auth gate ──────────────────────────────────────────────────────────────
 routes.use(authMiddleware);

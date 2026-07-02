@@ -22,18 +22,16 @@ class UserBlockController {
       where: { email },
     });
 
-    let user_blocked_list = user.blocked_list;
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    if (user_blocked_list === null) {
-      user_blocked_list = [];
-      user_blocked_list.push(blocker_email);
-    } else {
-      user_blocked_list.push(blocker_email);
-    }
+    // Build a NEW array so Sequelize detects the change (in-place mutation of a
+    // Postgres ARRAY column is not tracked). Skip duplicates.
+    const current = user.blocked_list ?? [];
+    const blocked_list = current.includes(blocker_email)
+      ? current
+      : [...current, blocker_email];
 
-    await user.update({
-      blocked_list: user_blocked_list,
-    });
+    await user.update({ blocked_list });
 
     return res.json(user);
   }
