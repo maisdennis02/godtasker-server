@@ -1,16 +1,11 @@
-# Render Blueprint — one-click provision of the API + managed Postgres.
+# Render Blueprint — provisions the API web service. The database is an
+# external free Postgres (Neon), passed in via DATABASE_URL.
 # Docs: https://render.com/docs/blueprint-spec
 #
 # Usage: push this repo to GitHub, then in Render → "New" → "Blueprint",
-# point it at the repo. Render reads this file and creates both resources.
-# Secrets marked `sync: false` are left blank for you to fill in the dashboard.
-
-databases:
-  - name: godtasker-db
-    databaseName: godtasker
-    user: godtasker
-    region: ohio # AWS us-east-2 — same region as the S3 bucket
-    plan: basic-256mb # free tier expires after 30 days; basic-256mb is persistent
+# point it at the repo. Render reads this file and creates the web service.
+# Secrets marked `sync: false` are left blank for you to fill in the dashboard —
+# paste the Neon connection string as DATABASE_URL.
 
 services:
   - type: web
@@ -22,10 +17,10 @@ services:
     healthCheckPath: /health
     autoDeploy: true
     envVars:
+      # External Postgres — paste the Neon connection string (use the DIRECT,
+      # non-pooled URL so migrations run cleanly). SSL is enabled automatically.
       - key: DATABASE_URL
-        fromDatabase:
-          name: godtasker-db
-          property: connectionString
+        sync: false
       - key: NODE_ENV
         value: production
       # JWT signing secret — Render generates a strong random value once.
