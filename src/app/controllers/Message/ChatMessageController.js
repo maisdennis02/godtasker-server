@@ -1,7 +1,9 @@
 import { Op } from 'sequelize';
+import firebaseAdmin from 'firebase-admin';
 
 import Message from '../../models/Message';
 import ChatMessage from '../../models/ChatMessage';
+import User from '../../models/User';
 import { io } from '../../../http';
 import logger from '../../../lib/logger';
 
@@ -81,6 +83,32 @@ class ChatMessageController {
     // Real-time delivery to everyone in this conversation's room.
     io.to(`chat_${chatId}`).emit('chat:message', message);
     logger.debug({ chatId, sender_email }, 'chat message sent');
+
+    if (recipient_email) {
+      // Wake the recipient's conversation list even when they haven't joined
+      // this room (same user-addressed pattern as `task_create_${email}`).
+      io.emit(`chat:notify_${recipient_email}`, { chat_id: Number(chatId) });
+
+      // Push notification for the new message (same shape as the task pushes).
+      const [recipient, sender] = await Promise.all([
+        User.findOne({ where: { email: recipient_email } }),
+        User.findOne({ where: { email: sender_email } }),
+      ]);
+      if (recipient && recipient.notification_token) {
+        const title = (sender && sender.user_name) || sender_email;
+        const pushMessage = {
+          notification: { title, body },
+          data: { channelId: 'godtaskerChannel01', title, message: body },
+          android: { notification: { sound: 'default' } },
+          apns: { payload: { aps: { sound: 'default' } } },
+          token: recipient.notification_token,
+        };
+        firebaseAdmin
+          .messaging()
+          .send(pushMessage)
+          .catch(error => logger.error({ err: error }, 'FCM send failed'));
+      }
+    }
 
     return res.json(message);
   }
