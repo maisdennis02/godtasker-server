@@ -1,6 +1,7 @@
 import { Op } from 'sequelize';
 import firebaseAdmin from 'firebase-admin';
 
+import ChatMessage from '../../models/ChatMessage';
 import File from '../../models/File';
 import Message from '../../models/Message';
 import User from '../../models/User';
@@ -158,9 +159,18 @@ class MessageController {
   async delete(req, res) {
     const { id } = req.params;
 
-    let message = await Message.findByPk(id);
+    const message = await Message.findByPk(id);
+    if (!message) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
 
-    message = await message.destroy();
+    // Drop the thread too. chat_id values get reused (start() derives the next
+    // one from max(chat_id)), so orphaned messages would resurface inside a
+    // future stranger's conversation.
+    if (message.chat_id != null) {
+      await ChatMessage.destroy({ where: { chat_id: message.chat_id } });
+    }
+    await message.destroy();
 
     return res.json(message);
   }

@@ -20,6 +20,18 @@ class ChatMessageController {
         .json({ error: 'user_email and worker_email are required' });
     }
 
+    // Both parties must be real accounts — otherwise a typo'd email creates a
+    // ghost conversation that clutters the list forever.
+    const parties = await User.findAll({
+      where: { email: [user_email, worker_email] },
+      attributes: ['email'],
+    });
+    const found = new Set(parties.map(u => u.email));
+    const missing = [user_email, worker_email].find(e => !found.has(e));
+    if (missing) {
+      return res.status(404).json({ error: `No user with email ${missing}` });
+    }
+
     let header = await Message.findOne({
       where: {
         [Op.or]: [
