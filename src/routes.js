@@ -55,6 +55,10 @@ routes.get('/health', (req, res) => res.json({ status: 'ok' }));
 routes.post('/sessions', authLimiter, SessionController.store);
 routes.post('/users', authLimiter, UserController.store);
 
+// Public image proxy: streams private S3 objects so <img src> works (a browser
+// image request can't carry the auth header). Object keys aren't secrets.
+routes.get('/files/raw/:key', FileController.raw);
+
 // ─── Auth gate ──────────────────────────────────────────────────────────────
 routes.use(authMiddleware);
 

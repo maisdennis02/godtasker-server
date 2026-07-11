@@ -9,8 +9,12 @@ class Signature extends Model {
         url: {
           type: Sequelize.VIRTUAL,
           get() {
-            // return `http://localhost:3333/signatures/${this.path}`;
-            return `${this.path}`;
+            // Same private-bucket situation as File: stream through the public
+            // proxy. Signatures live in the same S3 bucket, so /files/raw works.
+            if (!this.name) return this.path;
+            return `${process.env.APP_URL || ''}/files/raw/${encodeURIComponent(
+              this.name
+            )}`;
           },
         },
       },

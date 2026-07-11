@@ -9,8 +9,13 @@ class File extends Model {
         url: {
           type: Sequelize.VIRTUAL,
           get() {
-            // return `http://localhost:3333/files/${this.path}`;
-            return `${this.path}`;
+            // Objects in the S3 bucket are private (no public-read policy), so a
+            // direct S3 URL 403s in an <img>. Serve them through the app's public
+            // streaming proxy (GET /files/raw/:key) instead. `name` is the S3 key.
+            if (!this.name) return this.path;
+            return `${process.env.APP_URL || ''}/files/raw/${encodeURIComponent(
+              this.name
+            )}`;
           },
         },
       },
