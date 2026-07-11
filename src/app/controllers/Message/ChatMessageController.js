@@ -6,6 +6,7 @@ import ChatMessage from '../../models/ChatMessage';
 import User from '../../models/User';
 import { io } from '../../../http';
 import logger from '../../../lib/logger';
+import { isBlockedBetween } from '../../utils/blocks';
 
 class ChatMessageController {
   // Resolve (or create) the conversation header for a user<->worker pair and
@@ -24,12 +25,20 @@ class ChatMessageController {
     // ghost conversation that clutters the list forever.
     const parties = await User.findAll({
       where: { email: [user_email, worker_email] },
-      attributes: ['email'],
+      attributes: ['email', 'blocked_list'],
     });
     const found = new Set(parties.map(u => u.email));
     const missing = [user_email, worker_email].find(e => !found.has(e));
     if (missing) {
       return res.status(404).json({ error: `No user with email ${missing}` });
+    }
+
+    // Blocking must actually block: neither side can open a conversation.
+    const byEmail = new Map(parties.map(u => [u.email, u]));
+    if (isBlockedBetween(byEmail.get(user_email), byEmail.get(worker_email))) {
+      return res
+        .status(403)
+        .json({ error: 'This conversation is unavailable' });
     }
 
     let header = await Message.findOne({
@@ -79,6 +88,22 @@ class ChatMessageController {
         .json({ error: 'sender_email and body are required' });
     }
 
+    // Load both parties up front: the block check must run BEFORE the message
+    // is persisted, and the push section reuses these below.
+    let recipient = null;
+    let sender = null;
+    if (recipient_email) {
+      [recipient, sender] = await Promise.all([
+        User.findOne({ where: { email: recipient_email } }),
+        User.findOne({ where: { email: sender_email } }),
+      ]);
+      if (isBlockedBetween(sender, recipient)) {
+        return res
+          .status(403)
+          .json({ error: 'This conversation is unavailable' });
+      }
+    }
+
     const message = await ChatMessage.create({
       chat_id: chatId,
       sender_email,
@@ -102,10 +127,6 @@ class ChatMessageController {
       io.emit(`chat:notify_${recipient_email}`, { chat_id: Number(chatId) });
 
       // Push notification for the new message (same shape as the task pushes).
-      const [recipient, sender] = await Promise.all([
-        User.findOne({ where: { email: recipient_email } }),
-        User.findOne({ where: { email: sender_email } }),
-      ]);
       if (recipient && recipient.notification_token) {
         const title = (sender && sender.user_name) || sender_email;
         const pushMessage = {

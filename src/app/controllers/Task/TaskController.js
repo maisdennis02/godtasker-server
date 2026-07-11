@@ -9,6 +9,7 @@ import File from '../../models/File';
 import { io } from '../../../http';
 import logger from '../../../lib/logger';
 import { subtaskProgress } from '../../utils/subtasks';
+import { isBlockedBetween } from '../../utils/blocks';
 
 class TaskController {
   async store(req, res) {
@@ -39,6 +40,13 @@ class TaskController {
       return res
         .status(400)
         .json({ error: 'Create failed: Assignee does not exist.' });
+    }
+
+    // Blocking must actually block: no tasks in either direction.
+    if (isBlockedBetween(requester, assignee)) {
+      return res
+        .status(403)
+        .json({ error: 'You cannot send tasks to this user' });
     }
 
     const hourStart = startOfHour(parseISO(start_date));

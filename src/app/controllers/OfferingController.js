@@ -5,6 +5,7 @@ import Task from '../models/Task';
 import User from '../models/User';
 import { io } from '../../http';
 import logger from '../../lib/logger';
+import { isBlockedBetween } from '../utils/blocks';
 
 class OfferingController {
   // Create an offering owned by the logged-in user.
@@ -107,6 +108,13 @@ class OfferingController {
     const assignee = await User.findByPk(offering.creator_id);
     if (!requester || !assignee) {
       return res.status(400).json({ error: 'Requester or creator missing' });
+    }
+
+    // Blocking must actually block: no offering requests in either direction.
+    if (isBlockedBetween(requester, assignee)) {
+      return res
+        .status(403)
+        .json({ error: 'You cannot request offerings from this user' });
     }
 
     const task = await Task.create({
