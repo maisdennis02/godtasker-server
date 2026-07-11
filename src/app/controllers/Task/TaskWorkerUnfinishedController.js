@@ -5,11 +5,12 @@ import User from '../../models/User';
 // Tasks assigned to me (received) that are not yet finished.
 class TaskWorkerUnfinishedController {
   async index(req, res) {
-    const { assigneeID, nameFilter } = req.query;
+    const { nameFilter } = req.query;
     const tasks = await Task.findAll({
       order: ['due_date'],
       where: {
-        assignee_id: assigneeID,
+        // Derive the owner from the auth token, never a client-supplied id.
+        assignee_id: req.userId,
         canceled_at: null,
         end_date: null,
         name: { [Op.iLike]: `%${nameFilter}%` },

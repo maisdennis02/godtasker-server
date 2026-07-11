@@ -5,11 +5,11 @@ import User from '../../models/User';
 // Tasks I sent (requester) that were canceled.
 class TaskUserCanceledController {
   async index(req, res) {
-    const { assigneeNameFilter, requesterID, nameFilter } = req.query;
+    const { assigneeNameFilter, nameFilter } = req.query;
     const tasks = await Task.findAll({
       order: ['due_date'],
       where: {
-        requester_id: requesterID,
+        requester_id: req.userId,
         canceled_at: { [Op.ne]: null },
         name: { [Op.iLike]: `%${nameFilter}%` },
       },

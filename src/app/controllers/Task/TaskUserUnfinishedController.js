@@ -5,8 +5,8 @@ import User from '../../models/User';
 // Tasks I sent (requester) that are not yet finished.
 class TaskUserUnfinishedController {
   async index(req, res) {
-    const { assigneeNameFilter, requesterID, nameFilter } = req.query;
-    const parsedRequesterID = parseInt(requesterID);
+    const { assigneeNameFilter, nameFilter } = req.query;
+    const parsedRequesterID = req.userId;
     const tasks = await Task.findAll({
       order: ['due_date'],
       where: {

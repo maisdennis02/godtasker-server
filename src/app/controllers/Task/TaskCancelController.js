@@ -9,6 +9,7 @@ class TaskCancelController {
     const { status } = req.body;
 
     let task = await Task.findByPk(id);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
 
     task = await task.update({
       canceled_at: new Date(),
@@ -21,12 +22,12 @@ class TaskCancelController {
     const pushMessage = {
       notification: {
         title: `${requester.user_name}`,
-        body: `${task.status.comment}`,
+        body: `${task.status?.comment ?? ''}`,
       },
       data: {
         channelId: 'godtaskerChannel01', // (required)
         title: `${requester.user_name}:`,
-        message: `${task.status.comment}`,
+        message: `${task.status?.comment ?? ''}`,
       },
       android: {
         notification: {

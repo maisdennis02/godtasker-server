@@ -35,9 +35,11 @@ class DashboardController {
     });
     const countFollowers = followers.length;
 
-    // Tasks I sent (requester) and tasks I received (assignee). For one person
-    // both ids are the same; the frontend still passes user_id/worker_id.
-    const { user_id, worker_id } = req.query;
+    // Tasks I sent (requester) and tasks I received (assignee) — always the
+    // authenticated user's own tasks. Derive from the token, not a client id,
+    // so nobody can read another user's task counts by changing the query.
+    const user_id = req.userId;
+    const worker_id = req.userId;
 
     const userSent = await Task.findAll({
       order: ['due_date'],

@@ -4,9 +4,9 @@ import Task from '../../models/Task';
 // -----------------------------------------------------------------------------
 class TaskWorkerCountController {
   async index(req, res) {
-    const { assigneeID } = req.query;
-    // console.log(req.query)
-    const parsedAssigneeID = parseInt(assigneeID);
+    // Owner comes from the auth token, not a client-supplied id.
+    const assigneeID = req.userId;
+    const parsedAssigneeID = req.userId;
 
     const received = await Task.findAll({
       order: ['due_date'],
