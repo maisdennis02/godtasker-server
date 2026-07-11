@@ -1,5 +1,7 @@
 import Sequelize, { Model } from 'sequelize';
 
+import { fileProxyUrl } from '../utils/publicUrl';
+
 class File extends Model {
   static init(sequelize) {
     super.init(
@@ -13,9 +15,7 @@ class File extends Model {
             // direct S3 URL 403s in an <img>. Serve them through the app's public
             // streaming proxy (GET /files/raw/:key) instead. `name` is the S3 key.
             if (!this.name) return this.path;
-            return `${process.env.APP_URL || ''}/files/raw/${encodeURIComponent(
-              this.name
-            )}`;
+            return fileProxyUrl(this.name);
           },
         },
       },
