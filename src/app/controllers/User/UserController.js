@@ -1,7 +1,10 @@
 import * as Yup from 'yup';
+import { Op } from 'sequelize';
 
 import User from '../../models/User';
 import File from '../../models/File';
+import Message from '../../models/Message';
+import ChatMessage from '../../models/ChatMessage';
 
 class UserController {
   async store(req, res) {
@@ -85,10 +88,43 @@ class UserController {
 
   async delete(req, res) {
     const { id } = req.params;
+
+    // Only the account owner may delete it. Without this, any authenticated
+    // user could delete any other account by guessing its id (IDOR).
+    if (Number(id) !== req.userId) {
+      return res.status(403).json({ error: 'You can only delete your own account' });
+    }
+
     const user = await User.findByPk(id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    await user.destroy();
+    // Conversations and chat messages are keyed by plain email (no FK), so a
+    // bare user.destroy() would leave ghost threads that resurface in other
+    // people's lists. Wrap the cleanup + delete in one transaction so a
+    // mid-way failure can't half-delete the account.
+    const { email } = user;
+    await User.sequelize.transaction(async transaction => {
+      await ChatMessage.destroy({
+        where: {
+          [Op.or]: [{ sender_email: email }, { recipient_email: email }],
+        },
+        transaction,
+      });
+      await Message.destroy({
+        where: {
+          [Op.or]: [{ user_email: email }, { worker_email: email }],
+        },
+        transaction,
+      });
+      // Follow rows: following_id side cascades on delete, but the follower_id
+      // side is SET NULL — drop both so no orphaned (null, x) rows linger.
+      await User.sequelize.query(
+        'DELETE FROM user_followers WHERE follower_id = :id OR following_id = :id',
+        { replacements: { id: user.id }, transaction }
+      );
+      await user.destroy({ transaction });
+    });
+
     return res.json({ deleted: true, id });
   }
 }
