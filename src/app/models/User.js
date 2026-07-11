@@ -65,6 +65,19 @@ class User extends Model {
   checkPassword(password) {
     return bcrypt.compare(password, this.password_hash);
   }
+
+  // Every res.json(user) serializes through here — strip credentials and
+  // other users' push tokens no matter which endpoint returned the record.
+  toJSON() {
+    const values = super.toJSON();
+    delete values.password;
+    delete values.password_hash;
+    delete values.password_reset_hash;
+    delete values.password_reset_expires;
+    delete values.password_reset_attempts;
+    delete values.notification_token;
+    return values;
+  }
 }
 
 export default User;
