@@ -13,8 +13,12 @@ class Signature extends Model {
           get() {
             // Same private-bucket situation as File: stream through the public
             // proxy. Signatures live in the same S3 bucket, so /files/raw works.
-            if (!this.name) return this.path;
-            return fileProxyUrl(this.name);
+            // Fall back to the key embedded in the S3 URL when only `path` was
+            // selected (mirrors File.url).
+            const key =
+              this.name ||
+              (this.path && decodeURIComponent(this.path.split('/').pop()));
+            return key ? fileProxyUrl(key) : this.path;
           },
         },
       },
