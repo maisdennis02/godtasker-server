@@ -59,19 +59,26 @@ class TaskWorkerSubtaskNotificationController {
     // console.log(task.sub_task_list);
     let pushMessage = {};
     try {
+      // `text` is an optional client-localized label array ([prefix, done,
+      // separator, undone]); default to English so a client that omits it (or
+      // a subtask without a description) never renders "undefined".
+      const labels = Array.isArray(text)
+        ? text
+        : ['Subtask', 'completed', '·', 'reopened'];
+      const subtask = task.sub_task_list?.[position] ?? {};
+      const pushTitle = `${labels[0]}: ${task.name}:`;
+      const pushBody = `${assignee.user_name} ${
+        subtask.complete ? `${labels[1]}` : `${labels[3]}`
+      } ${labels[2]}: ${subtask.description ?? ''}`;
       pushMessage = {
         notification: {
-          title: `${text[0]}: ${task.name}:`,
-          body: `${assignee.user_name} ${
-            task.sub_task_list[position].complete ? `${text[1]}` : `${text[3]}`
-          } ${text[2]}: ${task.sub_task_list[position].description}`,
+          title: pushTitle,
+          body: pushBody,
         },
         data: {
           channelId: 'godtaskerChannel01', // (required)
-          title: `${text[0]}: ${task.name}:`,
-          message: `${assignee.user_name} ${
-            task.sub_task_list[position].complete ? `${text[1]}` : `${text[3]}`
-          } ${text[2]}: ${task.sub_task_list[position].description}`,
+          title: pushTitle,
+          message: pushBody,
         },
         android: {
           notification: {

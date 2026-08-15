@@ -107,15 +107,19 @@ class MessageController {
 
     let pushMessage = {};
     try {
-      // When Worker Declines or Accepts the Task
+      // New message push. Both fields are client-supplied and optional — fall
+      // back so the notification never renders "undefined:". (No trailing
+      // colon on the body; it's the message text itself.)
+      const pushTitle = `${messageObject.sender_name ?? 'New message'}:`;
+      const pushBody = messageObject.message ?? '';
       pushMessage = {
         notification: {
-          title: `${messageObject.sender_name}:`,
-          body: `${messageObject.message}:`,
+          title: pushTitle,
+          body: pushBody,
         },
         data: {
-          title: `${messageObject.sender_name}:`,
-          message: `${messageObject.message}:`,
+          title: pushTitle,
+          message: pushBody,
         },
         android: {
           notification: {

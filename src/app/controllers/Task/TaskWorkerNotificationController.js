@@ -53,16 +53,18 @@ class TaskWorkerNotificationController {
 
     let pushMessage = {};
     try {
-      // When Worker Declines or Accepts the Task
+      // When Worker Declines or Accepts the Task. `status.comment` is optional
+      // (older clients omit it) — fall back so the body never reads "undefined".
+      const comment = task.status?.comment ?? `${task.name ?? 'Task'} updated`;
       pushMessage = {
         notification: {
           title: `${assignee.user_name}:`,
-          body: `${task.status.comment}`,
+          body: comment,
         },
         data: {
           channelId: 'godtaskerChannel01', // (required)
           title: `${assignee.user_name}:`,
-          message: `${task.status.comment}`,
+          message: comment,
         },
         android: {
           notification: {
