@@ -28,7 +28,8 @@ class TaskConfirmController {
     });
 
     // Firebase Notification ***************************************************
-    const assignee = await User.findByPk(task.assignee_id);
+    // The assignee is the one confirming, so the requester gets the push.
+    const requester = await User.findByPk(task.requester_id);
 
     const pushMessage = {
       notification: {
@@ -52,10 +53,10 @@ class TaskConfirmController {
           },
         },
       },
-      token: assignee.notification_token,
+      token: requester.notification_token,
     };
 
-    if (assignee.notification_token) {
+    if (requester.notification_token) {
       firebaseAdmin
         .messaging()
         .send(pushMessage)
