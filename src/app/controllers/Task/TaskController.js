@@ -143,6 +143,7 @@ class TaskController {
       score,
       status,
       status_bar,
+      confirm_photo,
       start_date,
       initiated_at,
       canceled_at,
@@ -159,6 +160,7 @@ class TaskController {
       task_attributes,
       score,
       status,
+      confirm_photo,
       // Derive progress from the subtasks when they're part of the update;
       // otherwise honor the value the client sent.
       status_bar:
