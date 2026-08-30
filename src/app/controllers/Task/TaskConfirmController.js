@@ -21,6 +21,13 @@ class TaskConfirmController {
       });
     }
 
+    // Photo-proof tasks can only be ended with an attached confirmation photo.
+    if (task.confirm_photo && !signature_id) {
+      return res.status(400).json({
+        error: 'Cannot complete: a confirmation photo is required.',
+      });
+    }
+
     task = await task.update({
       end_date,
       signature_id,
