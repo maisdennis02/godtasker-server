@@ -8,8 +8,7 @@ class TaskWorkerCountController {
     const assigneeID = req.userId;
     const parsedAssigneeID = req.userId;
 
-    const received = await Task.findAll({
-      order: ['due_date'],
+    const countReceived = await Task.count({
       where: {
         assignee_id: parsedAssigneeID,
         canceled_at: null,
@@ -18,8 +17,9 @@ class TaskWorkerCountController {
       },
     });
 
+    // Rows (not a count) because the due-date buckets below need due_date.
     const initiated = await Task.findAll({
-      order: ['due_date'],
+      attributes: ['due_date'],
       where: {
         assignee_id: parsedAssigneeID,
         canceled_at: null,
@@ -28,8 +28,7 @@ class TaskWorkerCountController {
       },
     });
 
-    const finished = await Task.findAll({
-      order: ['due_date'],
+    const countFinished = await Task.count({
       where: {
         assignee_id: assigneeID,
         canceled_at: null,
@@ -37,8 +36,7 @@ class TaskWorkerCountController {
       },
     });
 
-    const canceled = await Task.findAll({
-      order: ['due_date'],
+    const countCanceled = await Task.count({
       where: { assignee_id: assigneeID, canceled_at: { [Op.ne]: null } },
     });
 
@@ -82,10 +80,7 @@ class TaskWorkerCountController {
       return array;
     }
 
-    const countReceived = received.length;
     const countInitiated = initiated.length;
-    const countFinished = finished.length;
-    const countCanceled = canceled.length;
     const countOverDue = overDue().length;
     const countTodayDue = todayDue().length;
     const countTomorrowDue = tomorrowDue().length;

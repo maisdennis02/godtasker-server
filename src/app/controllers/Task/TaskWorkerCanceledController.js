@@ -5,14 +5,22 @@ import User from '../../models/User';
 // Tasks assigned to me (received) that were canceled.
 class TaskWorkerCanceledController {
   async index(req, res) {
-    const { nameFilter } = req.query;
+    const { nameFilter, limit, page } = req.query;
+    // Pagination is opt-in: clients that don't send `limit` (vc10 and older)
+    // still get the full list.
+    const pageSize = parseInt(limit, 10);
+    const pagination =
+      pageSize > 0
+        ? { limit: pageSize, offset: (Math.max(parseInt(page, 10) || 1, 1) - 1) * pageSize }
+        : {};
     const tasks = await Task.findAll({
       where: {
         assignee_id: req.userId,
         canceled_at: { [Op.ne]: null },
         name: { [Op.iLike]: `%${nameFilter}%` },
       },
-      order: ['due_date'],
+      order: [['canceled_at', 'DESC']],
+      ...pagination,
       include: [
         {
           model: User,

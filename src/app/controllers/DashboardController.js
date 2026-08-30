@@ -41,8 +41,7 @@ class DashboardController {
     const user_id = req.userId;
     const worker_id = req.userId;
 
-    const userSent = await Task.findAll({
-      order: ['due_date'],
+    const userCountSent = await Task.count({
       where: {
         requester_id: user_id,
         canceled_at: null,
@@ -51,8 +50,9 @@ class DashboardController {
       },
     });
 
+    // Rows (not a count) because the due-date buckets below need due_date.
     const userInitiated = await Task.findAll({
-      order: ['due_date'],
+      attributes: ['due_date'],
       where: {
         requester_id: user_id,
         canceled_at: null,
@@ -61,8 +61,7 @@ class DashboardController {
       },
     });
 
-    const userFinished = await Task.findAll({
-      order: ['due_date'],
+    const userCountFinished = await Task.count({
       where: {
         requester_id: user_id,
         canceled_at: null,
@@ -70,8 +69,7 @@ class DashboardController {
       },
     });
 
-    const userCanceled = await Task.findAll({
-      order: ['due_date'],
+    const userCountCanceled = await Task.count({
       where: { requester_id: user_id, canceled_at: { [Op.ne]: null } },
     });
 
@@ -113,17 +111,13 @@ class DashboardController {
       return array;
     }
 
-    const userCountSent = userSent.length;
     const userCountInitiated = userInitiated.length;
-    const userCountFinished = userFinished.length;
-    const userCountCanceled = userCanceled.length;
     const userCountOverDue = userOverDue().length;
     const userCountTodayDue = userTodayDue().length;
     const userCountTomorrowDue = userTomorrowDue().length;
     const userCountThisWeekDue = userThisWeekDue().length;
 
-    const workerReceived = await Task.findAll({
-      order: ['due_date'],
+    const workerCountReceived = await Task.count({
       where: {
         assignee_id: worker_id,
         canceled_at: null,
@@ -132,8 +126,9 @@ class DashboardController {
       },
     });
 
+    // Rows (not a count) because the due-date buckets below need due_date.
     const workerInitiated = await Task.findAll({
-      order: ['due_date'],
+      attributes: ['due_date'],
       where: {
         assignee_id: worker_id,
         canceled_at: null,
@@ -142,8 +137,7 @@ class DashboardController {
       },
     });
 
-    const workerFinished = await Task.findAll({
-      order: ['due_date'],
+    const workerCountFinished = await Task.count({
       where: {
         assignee_id: worker_id,
         canceled_at: null,
@@ -151,8 +145,7 @@ class DashboardController {
       },
     });
 
-    const workerCanceled = await Task.findAll({
-      order: ['due_date'],
+    const workerCountCanceled = await Task.count({
       where: { assignee_id: worker_id, canceled_at: { [Op.ne]: null } },
     });
 
@@ -194,10 +187,7 @@ class DashboardController {
       return array;
     }
 
-    const workerCountReceived = workerReceived.length;
     const workerCountInitiated = workerInitiated.length;
-    const workerCountFinished = workerFinished.length;
-    const workerCountCanceled = workerCanceled.length;
     const workerCountOverDue = workerOverDue().length;
     const workerCountTodayDue = workerTodayDue().length;
     const workerCountTomorrowDue = workerTomorrowDue().length;
