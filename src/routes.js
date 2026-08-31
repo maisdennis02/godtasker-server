@@ -17,8 +17,10 @@ import PasswordResetController from './app/controllers/PasswordResetController';
 import SessionController from './app/controllers/SessionController';
 import SignatureController from './app/controllers/SignatureController';
 
+import TaskApproveController from './app/controllers/Task/TaskApproveController';
 import TaskCancelController from './app/controllers/Task/TaskCancelController';
 import TaskConfirmController from './app/controllers/Task/TaskConfirmController';
+import TaskReopenController from './app/controllers/Task/TaskReopenController';
 import TaskController from './app/controllers/Task/TaskController';
 import TaskDetailController from './app/controllers/Task/TaskDetailController';
 import TaskReviveController from './app/controllers/Task/TaskReviveController';
@@ -120,6 +122,8 @@ routes.put(
   '/tasks/:id/notification/worker/subtask',
   TaskWorkerSubtaskNotificationController.update
 );
+routes.put('/tasks/:id/approve', TaskApproveController.update);
+routes.put('/tasks/:id/reopen', TaskReopenController.update);
 routes.put('/tasks/:id/cancel', TaskCancelController.update);
 routes.put('/tasks/:id/revive', TaskReviveController.update);
 routes.put('/tasks/:id/status', TaskStatusController.update);

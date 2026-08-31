@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 import Task from '../../models/Task';
 import File from '../../models/File';
 import User from '../../models/User';
+import Signature from '../../models/Signature';
 // Tasks assigned to me (received) that are not yet finished.
 class TaskWorkerUnfinishedController {
   async index(req, res) {
@@ -31,6 +32,13 @@ class TaskWorkerUnfinishedController {
           include: [
             { model: File, as: 'avatar', attributes: ['name', 'path', 'url'] },
           ],
+        },
+        {
+          // Awaiting-approval tasks are still "unfinished" but may already carry
+          // the attached proof photo.
+          model: Signature,
+          as: 'signature',
+          attributes: ['name', 'path', 'url'],
         },
       ],
     });

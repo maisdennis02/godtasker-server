@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { serverHttp, io } from './http';
 import logger from './lib/logger';
+import { startApprovalOverdueNotifier } from './lib/approvalOverdueNotifier';
 
 const PORT = Number(process.env.PORT) || 3333;
 
@@ -24,4 +25,5 @@ io.on('connection', socket => {
 
 serverHttp.listen(PORT, () => {
   logger.info(`GodTasker server listening on http://localhost:${PORT}`);
+  startApprovalOverdueNotifier();
 });

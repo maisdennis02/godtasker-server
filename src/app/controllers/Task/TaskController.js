@@ -22,6 +22,7 @@ class TaskController {
       status,
       points,
       confirm_photo,
+      approval_required,
       start_date,
       due_date,
       created,
@@ -67,6 +68,7 @@ class TaskController {
       status_bar: subtaskProgress(sub_task_list),
       points,
       confirm_photo,
+      approval_required: !!approval_required,
       start_date,
       due_date,
     });
@@ -144,6 +146,7 @@ class TaskController {
       status,
       status_bar,
       confirm_photo,
+      approval_required,
       start_date,
       initiated_at,
       canceled_at,
@@ -161,6 +164,7 @@ class TaskController {
       score,
       status,
       confirm_photo,
+      approval_required,
       // Derive progress from the subtasks when they're part of the update;
       // otherwise honor the value the client sent.
       status_bar:
