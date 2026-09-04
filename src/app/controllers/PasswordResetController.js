@@ -52,9 +52,9 @@ class PasswordResetController {
     try {
       await sendMail({
         to: email,
-        subject: 'GodTasker password reset code',
+        subject: 'LalaTask password reset code',
         text:
-          `Your GodTasker password reset code is: ${code}\n\n` +
+          `Your LalaTask password reset code is: ${code}\n\n` +
           `It expires in 15 minutes.\n\n` +
           `If you didn't request this, you can safely ignore this email.`,
       });

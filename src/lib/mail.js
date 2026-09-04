@@ -19,7 +19,7 @@ export default async function sendMail({ to, subject, text, html }) {
   const { error } = await resend.emails.send({
     // resend.dev sender only delivers to the account owner's email — fine
     // as a fallback for testing, set MAIL_FROM to a verified domain in prod.
-    from: MAIL_FROM || 'GodTasker <onboarding@resend.dev>',
+    from: MAIL_FROM || 'LalaTask <onboarding@resend.dev>',
     to,
     subject,
     text,
