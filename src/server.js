@@ -24,6 +24,6 @@ io.on('connection', socket => {
 });
 
 serverHttp.listen(PORT, () => {
-  logger.info(`GodTasker server listening on http://localhost:${PORT}`);
+  logger.info(`LalaTask server listening on http://localhost:${PORT}`);
   startApprovalOverdueNotifier();
 });

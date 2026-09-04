@@ -24,13 +24,13 @@ class UserFollowingController {
     // Firebase Notification ***************************************************
     const pushMessage = {
       notification: {
-        title: `The Godtasker`,
-        body: `${follower.user_name} started following you`,
+        title: `${follower.user_name}`,
+        body: `started following you`,
       },
       data: {
         channelId: 'godtaskerChannel01', // (required)
-        title: `The Godtasker`,
-        message: `${follower.user_name} started following you`,
+        title: `${follower.user_name}`,
+        message: `started following you`,
       },
       android: { notification: { sound: 'default' } },
       apns: { payload: { aps: { sound: 'default' } } },
