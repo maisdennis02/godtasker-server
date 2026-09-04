@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { format, startOfHour, parseISO, isBefore, subDays } from 'date-fns';
+import { format, startOfHour, isBefore, subDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import firebaseAdmin from 'firebase-admin';
 
@@ -9,6 +9,7 @@ import File from '../../models/File';
 import { io } from '../../../http';
 import logger from '../../../lib/logger';
 import { subtaskProgress } from '../../utils/subtasks';
+import { toDateOrNull } from '../../utils/dates';
 import { isBlockedBetween } from '../../utils/blocks';
 
 class TaskController {
@@ -50,8 +51,10 @@ class TaskController {
         .json({ error: 'You cannot send tasks to this user' });
     }
 
-    const hourStart = startOfHour(parseISO(start_date));
-    if (isBefore(hourStart, subDays(new Date(), 1))) {
+    const startsAt = toDateOrNull(start_date);
+    const dueAt = toDateOrNull(due_date);
+
+    if (startsAt && isBefore(startOfHour(startsAt), subDays(new Date(), 1))) {
       return res.status(400).json({ error: 'Past dates are not permitted' });
     }
 
@@ -69,22 +72,22 @@ class TaskController {
       points,
       confirm_photo,
       approval_required: !!approval_required,
-      start_date,
-      due_date,
+      start_date: startsAt,
+      due_date: dueAt,
     });
 
-    const parsedDueDate = format(parseISO(due_date), "MMM'/'dd'/'yyyy", {
-      locale: enUS,
-    });
+    const parsedDueDate = dueAt
+      ? format(dueAt, "MMM'/'dd'/'yyyy", { locale: enUS })
+      : null;
 
     io.emit(`task_create_${assignee_email}`, 'Task Created');
 
     if (assignee.notification_token) {
       // `created`/`due` are optional client-localized labels (legacy apps send
       // them); default to English so newer clients don't render "undefined".
-      const pushBody = `${created || 'New task'}: ${name} | ${
-        due || 'due'
-      } ${parsedDueDate}`;
+      const pushBody = parsedDueDate
+        ? `${created || 'New task'}: ${name} | ${due || 'due'} ${parsedDueDate}`
+        : `${created || 'New task'}: ${name}`;
       const pushMessage = {
         notification: {
           title: `${requester.user_name}`,
@@ -169,10 +172,10 @@ class TaskController {
       // otherwise honor the value the client sent.
       status_bar:
         sub_task_list !== undefined ? subtaskProgress(sub_task_list) : status_bar,
-      start_date,
+      start_date: start_date === undefined ? undefined : toDateOrNull(start_date),
       initiated_at,
       canceled_at,
-      due_date,
+      due_date: due_date === undefined ? undefined : toDateOrNull(due_date),
     });
 
     return res.json(updated);
