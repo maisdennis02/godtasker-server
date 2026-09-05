@@ -16,7 +16,13 @@ class Offering extends Model {
         // Schedule copied onto spawned tasks, unless the requester picks it.
         start_date: Sequelize.DATE,
         due_date: Sequelize.DATE,
+        // When true the requester may set or change the dates (the creator's
+        // dates, if any, are defaults).
         requester_sets_dates: Sequelize.BOOLEAN,
+        // Fixed task length; when set, due = start + duration.
+        duration_minutes: Sequelize.INTEGER,
+        // Weekday/hour window the requester must start inside (see utils/availability).
+        availability: Sequelize.JSON,
         // Seats for an event/class; null = unlimited.
         max_requests: Sequelize.INTEGER,
         canceled_at: Sequelize.DATE,

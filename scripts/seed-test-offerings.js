@@ -21,7 +21,9 @@
 // Schedule per catalog entry: `fixed: [dayOffset, startHour, durationHours]`
 // gives the offering creator-set start/due dates that many days from now;
 // `requesterDates: true` lets the requester pick; neither = no schedule.
-// `seats` sets max_requests (undefined = unlimited).
+// `seats` sets max_requests (undefined = unlimited). `minutes` sets a fixed
+// duration_minutes (due = start + duration). `window: [days, from, to]` limits
+// when the requester may start (creator timezone America/Sao_Paulo).
 
 const { Sequelize } = require('sequelize');
 const cfg = require('../src/config/database');
@@ -47,6 +49,8 @@ const CATALOG = [
     confirm_photo_option: 1,
     steps: ['Get the shopping list', 'Buy everything on the list', 'Deliver and send receipt photo'],
     requesterDates: true,
+    minutes: 90,
+    window: [[1, 2, 3, 4, 5, 6], '08:00', '20:00'],
   },
   {
     name: 'Dog walk (30 min)',
@@ -55,6 +59,8 @@ const CATALOG = [
     confirm_photo_option: 1,
     steps: ['Pick up the dog', 'Walk 30 minutes', 'Refill water bowl'],
     requesterDates: true,
+    minutes: 30,
+    window: [[0, 1, 2, 3, 4, 5, 6], '07:00', '21:00'],
   },
   {
     name: 'Yoga class (group)',
@@ -63,6 +69,7 @@ const CATALOG = [
     confirm_photo_option: 0,
     steps: ['Arrive 10 minutes early', 'Warm-up', 'Main flow', 'Cool-down'],
     fixed: [7, 9, 1],
+    minutes: 60,
     seats: 8,
   },
   {
@@ -72,6 +79,7 @@ const CATALOG = [
     confirm_photo_option: 1,
     steps: ['Inspect the faucet', 'Replace worn parts', 'Test for leaks'],
     requesterDates: true,
+    window: [[1, 2, 3, 4, 5], '08:00', '18:00'],
   },
   {
     name: 'Portuguese conversation (1h)',
@@ -80,6 +88,8 @@ const CATALOG = [
     confirm_photo_option: 0,
     steps: ['Agree on a time', 'One-hour call', 'Send vocabulary notes'],
     requesterDates: true,
+    minutes: 60,
+    window: [[1, 3, 5], '18:00', '22:00'],
     seats: 5,
   },
   {
@@ -89,6 +99,7 @@ const CATALOG = [
     confirm_photo_option: 0,
     steps: ['Tune the guitar', 'Learn 3 chords', 'Play a song'],
     fixed: [3, 18, 1],
+    minutes: 60,
     seats: 1,
   },
   {
@@ -98,6 +109,8 @@ const CATALOG = [
     confirm_photo_option: 1,
     steps: ['Unpack and sort parts', 'Assemble', 'Photo of the finished piece'],
     requesterDates: true,
+    // Suggested start the requester may move.
+    fixed: [5, 14, 2],
   },
   {
     name: 'Resume review',
@@ -113,6 +126,7 @@ const CATALOG = [
     confirm_photo_option: 1,
     steps: ['Make the dough', 'Roll and cut', 'Cook and plate', 'Photo of your dish'],
     fixed: [10, 19, 3],
+    minutes: 180,
     seats: 6,
   },
   {
@@ -122,6 +136,8 @@ const CATALOG = [
     confirm_photo_option: 1,
     steps: ['Exterior wash', 'Interior vacuum', 'Before/after photos'],
     requesterDates: true,
+    minutes: 120,
+    window: [[6, 0], '09:00', '17:00'],
   },
   {
     name: 'Plant sitting (per week)',
@@ -139,6 +155,7 @@ const CATALOG = [
     confirm_photo_option: 1,
     steps: ['Meet at the bridge', 'Cleanup', 'Group photo with the bags'],
     fixed: [14, 8, 2],
+    minutes: 120,
     seats: 20,
   },
 ];
@@ -177,12 +194,12 @@ async function main() {
 
   if (flag('check')) {
     const [cols] = await s.query(
-      "SELECT column_name FROM information_schema.columns WHERE table_name = 'offerings' AND column_name IN ('start_date','due_date','requester_sets_dates','max_requests')"
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'offerings' AND column_name IN ('start_date','due_date','requester_sets_dates','max_requests','duration_minutes','availability')"
     );
     const [mig] = await s.query(
       'SELECT name FROM "SequelizeMeta" ORDER BY name DESC LIMIT 1'
     );
-    console.log(`offerings schedule columns present: ${cols.length}/4`);
+    console.log(`offerings schedule columns present: ${cols.length}/6`);
     console.log(`latest migration: ${mig[0] ? mig[0].name : 'none'}`);
     await s.close();
     return;
@@ -239,7 +256,9 @@ async function main() {
     cursor += PER_USER;
 
     const label = p =>
-      `${p.name}${p.seats ? ` [${p.seats} seats]` : ''}${p.fixed ? ' [fixed dates]' : p.requesterDates ? ' [requester dates]' : ''}`;
+      `${p.name}${p.seats ? ` [${p.seats} seats]` : ''}${p.minutes ? ` [${p.minutes}min]` : ''}${
+        p.fixed ? (p.requesterDates ? ' [suggested dates]' : ' [fixed dates]') : p.requesterDates ? ' [requester dates]' : ''
+      }${p.window ? ' [window]' : ''}`;
     console.log(`seed  #${u.id} ${u.user_name} <${u.email}>  -> ${picks.map(label).join(' | ')}`);
     for (const p of picks) {
       const dates = p.fixed ? fixedDates(p.fixed) : null;
@@ -252,9 +271,14 @@ async function main() {
         confirm_photo_option: p.confirm_photo_option,
         display_in_profile: true,
         start_date: dates ? dates.start : null,
-        due_date: dates ? dates.due : null,
+        due_date: dates ? (p.minutes ? new Date(dates.start.getTime() + p.minutes * 60000) : dates.due) : null,
         requester_sets_dates: !!p.requesterDates,
         max_requests: p.seats ?? null,
+        duration_minutes: p.minutes ?? null,
+        availability:
+          p.requesterDates && p.window
+            ? JSON.stringify({ days: p.window[0], from: p.window[1], to: p.window[2], tz: 'America/Sao_Paulo' })
+            : null,
       });
     }
   }
@@ -276,11 +300,13 @@ async function main() {
          (creator_id, name, description, sub_task_list, task_attributes, price,
           confirm_photo_option, tenure, display_in_profile,
           start_date, due_date, requester_sets_dates, max_requests,
+          duration_minutes, availability,
           created_at, updated_at)
        VALUES
          (:creator_id, :name, :description, CAST(:sub_task_list AS json), NULL, :price,
           :confirm_photo_option, NULL, :display_in_profile,
           :start_date, :due_date, :requester_sets_dates, :max_requests,
+          :duration_minutes, CAST(:availability AS json),
           NOW(), NOW())`,
       { replacements: r }
     );

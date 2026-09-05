@@ -7,23 +7,52 @@ import User from '../models/User';
 import { io } from '../../http';
 import logger from '../../lib/logger';
 import { isBlockedBetween } from '../utils/blocks';
+import { parseAvailability, availabilityViolation } from '../utils/availability';
 
-const SCHEDULE_KEYS = ['start_date', 'due_date', 'requester_sets_dates', 'max_requests'];
+const SCHEDULE_KEYS = [
+  'start_date',
+  'due_date',
+  'requester_sets_dates',
+  'max_requests',
+  'duration_minutes',
+  'availability',
+];
+
+const MINUTE_MS = 60 * 1000;
+
+function parseDate(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function addMinutes(date, minutes) {
+  return new Date(date.getTime() + minutes * MINUTE_MS);
+}
 
 // Normalise the schedule/capacity fields shared by store and update.
 // Returns { error } on bad input, otherwise the cleaned values.
 function scheduleFields(body) {
   const requesterSetsDates = !!body.requester_sets_dates;
-  // The creator's dates are meaningless when the requester picks them.
-  const startDate = requesterSetsDates ? null : body.start_date || null;
-  const dueDate = requesterSetsDates ? null : body.due_date || null;
-  if (startDate && Number.isNaN(new Date(startDate).getTime())) {
-    return { error: 'Invalid start date' };
+
+  let durationMinutes = null;
+  if (body.duration_minutes !== undefined && body.duration_minutes !== null && body.duration_minutes !== '') {
+    durationMinutes = Number(body.duration_minutes);
+    if (!Number.isInteger(durationMinutes) || durationMinutes < 1) {
+      return { error: 'Duration must be a whole number of minutes, at least 1' };
+    }
   }
-  if (dueDate && Number.isNaN(new Date(dueDate).getTime())) {
-    return { error: 'Invalid due date' };
-  }
-  if (startDate && dueDate && new Date(dueDate) < new Date(startDate)) {
+
+  // The creator's dates are kept even when the requester may change them:
+  // they act as the defaults offered in the request step.
+  const startDate = parseDate(body.start_date);
+  if (startDate === undefined) return { error: 'Invalid start date' };
+  let dueDate = parseDate(body.due_date);
+  if (dueDate === undefined) return { error: 'Invalid due date' };
+  if (durationMinutes) {
+    // A fixed duration derives the due date; whatever the client sent is ignored.
+    dueDate = startDate ? addMinutes(startDate, durationMinutes) : null;
+  } else if (startDate && dueDate && dueDate < startDate) {
     return { error: 'Due date must be after the start date' };
   }
 
@@ -35,11 +64,24 @@ function scheduleFields(body) {
     }
   }
 
+  // A window only means something when the requester picks the start.
+  const availability = requesterSetsDates ? parseAvailability(body.availability) : { value: null };
+  if (availability.error) return { error: availability.error };
+  if (availability.value && durationMinutes) {
+    const [fh, fm] = availability.value.from.split(':').map(Number);
+    const [th, tm] = availability.value.to.split(':').map(Number);
+    if (th * 60 + tm - (fh * 60 + fm) < durationMinutes) {
+      return { error: 'The availability window is shorter than the duration' };
+    }
+  }
+
   return {
     start_date: startDate,
     due_date: dueDate,
     requester_sets_dates: requesterSetsDates,
     max_requests: maxRequests,
+    duration_minutes: durationMinutes,
+    availability: availability.value,
   };
 }
 
@@ -181,22 +223,37 @@ class OfferingController {
         .json({ error: 'You cannot request offerings from this user' });
     }
 
-    // Schedule: the creator's, or the requester's when the offering allows it.
+    // Schedule. The creator's dates are the baseline; when the offering lets
+    // the requester set dates, the body may override them (inside the
+    // availability window). A fixed duration always derives the due date.
+    const requesterMay = !!offering.requester_sets_dates;
     let startDate = offering.start_date;
     let dueDate = offering.due_date;
-    if (offering.requester_sets_dates) {
-      startDate = req.body.start_date || null;
-      dueDate = req.body.due_date || null;
-      if (startDate && Number.isNaN(new Date(startDate).getTime())) {
-        return res.status(400).json({ error: 'Invalid start date' });
+    let requesterChose = false;
+    if (requesterMay) {
+      if (req.body.start_date !== undefined) {
+        const parsed = parseDate(req.body.start_date);
+        if (parsed === undefined) return res.status(400).json({ error: 'Invalid start date' });
+        startDate = parsed;
+        requesterChose = true;
       }
-      if (dueDate && Number.isNaN(new Date(dueDate).getTime())) {
-        return res.status(400).json({ error: 'Invalid due date' });
+      if (req.body.due_date !== undefined) {
+        const parsed = parseDate(req.body.due_date);
+        if (parsed === undefined) return res.status(400).json({ error: 'Invalid due date' });
+        dueDate = parsed;
+        requesterChose = true;
       }
-      if (startDate && dueDate && new Date(dueDate) < new Date(startDate)) {
-        return res.status(400).json({ error: 'Due date must be after the start date' });
-      }
-    } else if (dueDate && new Date(dueDate) < new Date()) {
+    }
+    if (offering.duration_minutes) {
+      dueDate = startDate ? addMinutes(startDate, offering.duration_minutes) : null;
+    } else if (startDate && dueDate && dueDate < startDate) {
+      return res.status(400).json({ error: 'Due date must be after the start date' });
+    }
+    if (requesterMay && offering.availability && startDate) {
+      const why = availabilityViolation(offering.availability, startDate, offering.duration_minutes);
+      if (why) return res.status(400).json({ error: why });
+    }
+    if (!requesterChose && dueDate && dueDate < new Date()) {
       return res.status(409).json({ error: 'This offering has already ended' });
     }
 
