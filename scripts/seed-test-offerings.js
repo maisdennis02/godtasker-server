@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
 // Seed a few realistic offerings for every user EXCEPT the Play Store
 // reviewer account, so the "Browse" side of the Offerings tab has something
 // to request during testing.
@@ -14,8 +13,15 @@
 // Everything inserted carries the marker "[seed]" at the end of the
 // description so it can be found and removed later:
 //   node scripts/seed-test-offerings.js --clean
+// Replace the previous seed in one go (clean + insert for everyone):
+//   node scripts/seed-test-offerings.js --reseed
 // Read-only: report whether the schedule/capacity migration has run here:
 //   node scripts/seed-test-offerings.js --check
+//
+// Schedule per catalog entry: `fixed: [dayOffset, startHour, durationHours]`
+// gives the offering creator-set start/due dates that many days from now;
+// `requesterDates: true` lets the requester pick; neither = no schedule.
+// `seats` sets max_requests (undefined = unlimited).
 
 const { Sequelize } = require('sequelize');
 const cfg = require('../src/config/database');
@@ -40,6 +46,7 @@ const CATALOG = [
     price: 35,
     confirm_photo_option: 1,
     steps: ['Get the shopping list', 'Buy everything on the list', 'Deliver and send receipt photo'],
+    requesterDates: true,
   },
   {
     name: 'Dog walk (30 min)',
@@ -47,6 +54,16 @@ const CATALOG = [
     price: 20,
     confirm_photo_option: 1,
     steps: ['Pick up the dog', 'Walk 30 minutes', 'Refill water bowl'],
+    requesterDates: true,
+  },
+  {
+    name: 'Yoga class (group)',
+    description: 'One-hour beginner-friendly session in the park. Bring a mat and water.',
+    price: 15,
+    confirm_photo_option: 0,
+    steps: ['Arrive 10 minutes early', 'Warm-up', 'Main flow', 'Cool-down'],
+    fixed: [7, 9, 1],
+    seats: 8,
   },
   {
     name: 'Fix a leaky faucet',
@@ -54,6 +71,7 @@ const CATALOG = [
     price: 60,
     confirm_photo_option: 1,
     steps: ['Inspect the faucet', 'Replace worn parts', 'Test for leaks'],
+    requesterDates: true,
   },
   {
     name: 'Portuguese conversation (1h)',
@@ -61,6 +79,17 @@ const CATALOG = [
     price: 25,
     confirm_photo_option: 0,
     steps: ['Agree on a time', 'One-hour call', 'Send vocabulary notes'],
+    requesterDates: true,
+    seats: 5,
+  },
+  {
+    name: 'Guitar lesson (beginner)',
+    description: 'First chords, strumming and one full song by the end of the hour. One student at a time.',
+    price: 40,
+    confirm_photo_option: 0,
+    steps: ['Tune the guitar', 'Learn 3 chords', 'Play a song'],
+    fixed: [3, 18, 1],
+    seats: 1,
   },
   {
     name: 'Assemble flat-pack furniture',
@@ -68,6 +97,7 @@ const CATALOG = [
     price: 80,
     confirm_photo_option: 1,
     steps: ['Unpack and sort parts', 'Assemble', 'Photo of the finished piece'],
+    requesterDates: true,
   },
   {
     name: 'Resume review',
@@ -77,11 +107,21 @@ const CATALOG = [
     steps: ['Receive the current resume', 'Review and annotate', 'Return the edited version'],
   },
   {
+    name: 'Cooking workshop: pasta from scratch',
+    description: 'Hands-on evening class. Flour, eggs and aprons provided; you take the pasta home.',
+    price: 50,
+    confirm_photo_option: 1,
+    steps: ['Make the dough', 'Roll and cut', 'Cook and plate', 'Photo of your dish'],
+    fixed: [10, 19, 3],
+    seats: 6,
+  },
+  {
     name: 'Car wash at your place',
     description: 'Exterior wash and interior vacuum, at your address.',
     price: 45,
     confirm_photo_option: 1,
     steps: ['Exterior wash', 'Interior vacuum', 'Before/after photos'],
+    requesterDates: true,
   },
   {
     name: 'Plant sitting (per week)',
@@ -89,15 +129,28 @@ const CATALOG = [
     price: 15,
     confirm_photo_option: 1,
     steps: ['Get watering instructions', 'Visit every other day', 'Send a photo each visit'],
+    requesterDates: true,
+    seats: 3,
   },
   {
-    name: 'Guitar lesson (beginner)',
-    description: 'First chords, strumming and one full song by the end of the hour.',
-    price: 40,
-    confirm_photo_option: 0,
-    steps: ['Tune the guitar', 'Learn 3 chords', 'Play a song'],
+    name: 'Neighborhood cleanup morning',
+    description: 'Two hours picking up litter along the river path. Gloves and bags provided.',
+    price: 0,
+    confirm_photo_option: 1,
+    steps: ['Meet at the bridge', 'Cleanup', 'Group photo with the bags'],
+    fixed: [14, 8, 2],
+    seats: 20,
   },
 ];
+
+// Creator-set schedule: `days` from now at `hour` local time, lasting `hours`.
+function fixedDates([days, hour, hours]) {
+  const start = new Date();
+  start.setDate(start.getDate() + days);
+  start.setHours(hour, 0, 0, 0);
+  const due = new Date(start.getTime() + hours * 60 * 60 * 1000);
+  return { start, due };
+}
 
 const PER_USER = 3;
 
@@ -113,7 +166,8 @@ function looksLikeReviewer(u) {
 async function main() {
   const s = new Sequelize({ ...cfg, logging: false });
   const dry = flag('dry-run');
-  const force = flag('force');
+  const reseed = flag('reseed');
+  const force = flag('force') || reseed;
   const extraExclude = opt('exclude')
     .split(',')
     .map(x => x.trim().toLowerCase())
@@ -134,14 +188,23 @@ async function main() {
     return;
   }
 
-  if (flag('clean')) {
+  if (flag('clean') || (reseed && !dry)) {
     const [, meta] = await s.query(
       'DELETE FROM offerings WHERE description LIKE :mark',
       { replacements: { mark: `%${SEED_MARK}` } }
     );
     console.log(`Removed ${meta.rowCount ?? meta} seeded offerings.`);
-    await s.close();
-    return;
+    if (!reseed) {
+      await s.close();
+      return;
+    }
+  }
+  if (reseed) {
+    const [[{ n }]] = await s.query(
+      'SELECT COUNT(*)::int AS n FROM offerings WHERE canceled_at IS NULL AND description NOT LIKE :mark',
+      { replacements: { mark: `%${SEED_MARK}` } }
+    );
+    if (n) console.log(`Note: ${n} non-seeded offering(s) exist and are left alone.`);
   }
 
   const [users] = await s.query(
@@ -175,18 +238,23 @@ async function main() {
     }
     cursor += PER_USER;
 
-    console.log(`seed  #${u.id} ${u.user_name} <${u.email}>  -> ${picks.map(p => p.name).join(' | ')}`);
+    const label = p =>
+      `${p.name}${p.seats ? ` [${p.seats} seats]` : ''}${p.fixed ? ' [fixed dates]' : p.requesterDates ? ' [requester dates]' : ''}`;
+    console.log(`seed  #${u.id} ${u.user_name} <${u.email}>  -> ${picks.map(label).join(' | ')}`);
     for (const p of picks) {
+      const dates = p.fixed ? fixedDates(p.fixed) : null;
       rows.push({
         creator_id: u.id,
         name: p.name,
         description: `${p.description} ${SEED_MARK}`,
         sub_task_list: JSON.stringify(subtasks(p.steps)),
-        task_attributes: null,
         price: p.price,
         confirm_photo_option: p.confirm_photo_option,
-        tenure: null,
         display_in_profile: true,
+        start_date: dates ? dates.start : null,
+        due_date: dates ? dates.due : null,
+        requester_sets_dates: !!p.requesterDates,
+        max_requests: p.seats ?? null,
       });
     }
   }
@@ -206,10 +274,14 @@ async function main() {
     await s.query(
       `INSERT INTO offerings
          (creator_id, name, description, sub_task_list, task_attributes, price,
-          confirm_photo_option, tenure, display_in_profile, created_at, updated_at)
+          confirm_photo_option, tenure, display_in_profile,
+          start_date, due_date, requester_sets_dates, max_requests,
+          created_at, updated_at)
        VALUES
          (:creator_id, :name, :description, CAST(:sub_task_list AS json), NULL, :price,
-          :confirm_photo_option, NULL, :display_in_profile, NOW(), NOW())`,
+          :confirm_photo_option, NULL, :display_in_profile,
+          :start_date, :due_date, :requester_sets_dates, :max_requests,
+          NOW(), NOW())`,
       { replacements: r }
     );
   }
