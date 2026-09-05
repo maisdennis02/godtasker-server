@@ -43,6 +43,7 @@ class Task extends Model {
     // Both sides are users now: requester (sender) and assignee (doer).
     this.belongsTo(models.User, { foreignKey: 'requester_id', as: 'requester' });
     this.belongsTo(models.User, { foreignKey: 'assignee_id', as: 'assignee' });
+    this.belongsTo(models.Offering, { foreignKey: 'offering_id', as: 'offering' });
     this.belongsTo(models.Signature, {
       foreignKey: 'signature_id',
       as: 'signature',

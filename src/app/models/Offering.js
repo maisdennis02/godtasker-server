@@ -13,6 +13,12 @@ class Offering extends Model {
         confirm_photo_option: Sequelize.INTEGER,
         tenure: Sequelize.INTEGER,
         display_in_profile: Sequelize.BOOLEAN,
+        // Schedule copied onto spawned tasks, unless the requester picks it.
+        start_date: Sequelize.DATE,
+        due_date: Sequelize.DATE,
+        requester_sets_dates: Sequelize.BOOLEAN,
+        // Seats for an event/class; null = unlimited.
+        max_requests: Sequelize.INTEGER,
         canceled_at: Sequelize.DATE,
       },
       {
@@ -24,6 +30,7 @@ class Offering extends Model {
 
   static associate(models) {
     this.belongsTo(models.User, { foreignKey: 'creator_id', as: 'creator' });
+    this.hasMany(models.Task, { foreignKey: 'offering_id', as: 'tasks' });
   }
 }
 
