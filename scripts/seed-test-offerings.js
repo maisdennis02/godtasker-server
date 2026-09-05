@@ -14,6 +14,8 @@
 // Everything inserted carries the marker "[seed]" at the end of the
 // description so it can be found and removed later:
 //   node scripts/seed-test-offerings.js --clean
+// Read-only: report whether the schedule/capacity migration has run here:
+//   node scripts/seed-test-offerings.js --check
 
 const { Sequelize } = require('sequelize');
 const cfg = require('../src/config/database');
@@ -118,6 +120,19 @@ async function main() {
     .filter(Boolean);
 
   console.log(`DB: ${cfg.database} @ ${cfg.host}`);
+
+  if (flag('check')) {
+    const [cols] = await s.query(
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'offerings' AND column_name IN ('start_date','due_date','requester_sets_dates','max_requests')"
+    );
+    const [mig] = await s.query(
+      'SELECT name FROM "SequelizeMeta" ORDER BY name DESC LIMIT 1'
+    );
+    console.log(`offerings schedule columns present: ${cols.length}/4`);
+    console.log(`latest migration: ${mig[0] ? mig[0].name : 'none'}`);
+    await s.close();
+    return;
+  }
 
   if (flag('clean')) {
     const [, meta] = await s.query(
