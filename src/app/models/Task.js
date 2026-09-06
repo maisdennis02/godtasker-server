@@ -26,6 +26,8 @@ class Task extends Model {
         start_date: Sequelize.DATE,
         initiated_at: Sequelize.DATE,
         due_date: Sequelize.DATE,
+        // Fixed length inherited from an offering; when set, due = start + duration.
+        duration_minutes: Sequelize.INTEGER,
         end_date: Sequelize.DATE,
         messaged_at: Sequelize.DATE,
         canceled_at: Sequelize.DATE,

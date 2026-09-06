@@ -159,6 +159,17 @@ class TaskController {
     const task = await Task.findByPk(id);
     if (!task) return res.status(404).json({ error: 'Task not found' });
 
+    // A task spawned from an offering with a fixed duration keeps due locked
+    // to start + duration, whatever due the client sends.
+    let nextStart = start_date === undefined ? undefined : toDateOrNull(start_date);
+    let nextDue = due_date === undefined ? undefined : toDateOrNull(due_date);
+    if (task.duration_minutes) {
+      const effectiveStart = nextStart === undefined ? task.start_date : nextStart;
+      nextDue = effectiveStart
+        ? new Date(new Date(effectiveStart).getTime() + task.duration_minutes * 60000)
+        : null;
+    }
+
     const updated = await task.update({
       name,
       description,
@@ -172,10 +183,10 @@ class TaskController {
       // otherwise honor the value the client sent.
       status_bar:
         sub_task_list !== undefined ? subtaskProgress(sub_task_list) : status_bar,
-      start_date: start_date === undefined ? undefined : toDateOrNull(start_date),
+      start_date: nextStart,
       initiated_at,
       canceled_at,
-      due_date: due_date === undefined ? undefined : toDateOrNull(due_date),
+      due_date: nextDue,
     });
 
     return res.json(updated);

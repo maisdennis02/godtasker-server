@@ -289,6 +289,7 @@ class OfferingController {
             confirm_photo: !!offering.confirm_photo_option,
             start_date: startDate,
             due_date: dueDate,
+            duration_minutes: offering.duration_minutes || null,
           },
           { transaction }
         );
