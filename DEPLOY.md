@@ -23,6 +23,11 @@ passed in via `DATABASE_URL`.
    - `FCM_*` — Firebase service-account fields (blank = push disabled, no crash).
      Paste `FCM_PRIVATE_KEY` with literal `\n` sequences exactly as in the JSON — the app
      converts them to newlines at runtime.
+   - `GOOGLE_CLIENT_IDS` — comma-separated OAuth client ids for "Sign in with Google"
+     (the **Web** client id; add the iOS client id when that app ships). Google Cloud
+     Console → APIs & Services → Credentials, same project as Firebase
+     (`godtasker-development`). Blank = `POST /sessions/google` answers 503; password
+     login is unaffected.
    - `NODE_ENV`, `APP_URL`, `AWS_REGION`, `AWS_BUCKET`, `APP_SECRET` are set by the blueprint.
 5. Deploy. First boot runs `npm run db:migrate` (against Neon) then starts the server.
 6. Verify: `curl https://<your-service>.onrender.com/health` → `{"status":"ok"}`.

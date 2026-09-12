@@ -1,9 +1,8 @@
-import jwt from 'jsonwebtoken';
 import * as Yup from 'yup';
 
-import authConfig from '../../config/auth';
 import User from '../models/User';
 import File from '../models/File';
+import { buildSession } from '../utils/session';
 
 class SessionController {
   async store(req, res) {
@@ -42,40 +41,7 @@ class SessionController {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const {
-      id,
-      subscriber,
-      first_name,
-      last_name,
-      user_name,
-      birth_date,
-      gender,
-      avatar,
-      instagram,
-      linkedin,
-      bio,
-    } = user;
-
-    return res.json({
-      user: {
-        id,
-        subscriber,
-        first_name,
-        last_name,
-        user_name,
-        email,
-        birth_date,
-        gender,
-        avatar,
-        instagram,
-        linkedin,
-        bio,
-      },
-      token: jwt.sign({ id }, authConfig.secret, {
-        expiresIn: authConfig.expiresIn,
-        algorithm: authConfig.algorithm,
-      }),
-    });
+    return res.json(buildSession(user));
   }
 }
 

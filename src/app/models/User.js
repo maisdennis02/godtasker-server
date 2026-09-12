@@ -27,6 +27,7 @@ class User extends Model {
         occupation: Sequelize.STRING,
         notification_token: Sequelize.STRING,
         locale: Sequelize.STRING,
+        google_id: Sequelize.STRING,
         flag_count: Sequelize.INTEGER,
         flagged_list: Sequelize.ARRAY(Sequelize.STRING),
         blocked_list: Sequelize.ARRAY(Sequelize.STRING),
@@ -77,6 +78,7 @@ class User extends Model {
     delete values.password_reset_expires;
     delete values.password_reset_attempts;
     delete values.notification_token;
+    delete values.google_id;
     return values;
   }
 }

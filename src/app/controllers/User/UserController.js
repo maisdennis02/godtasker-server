@@ -54,8 +54,11 @@ class UserController {
     const { password, oldPassword, password_hash, ...rest } = req.body;
 
     // Changing the password requires proving knowledge of the current one.
+    // Google-only accounts have no hash yet, so their first password is set
+    // without one (the bearer token already proves ownership).
     if (password) {
-      if (!oldPassword || !(await user.checkPassword(oldPassword))) {
+      const hasPassword = !!user.password_hash;
+      if (hasPassword && (!oldPassword || !(await user.checkPassword(oldPassword)))) {
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
       if (String(password).length < 8) {
