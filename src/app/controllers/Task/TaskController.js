@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
-import { format, startOfHour, isBefore, subDays } from 'date-fns';
-import { enUS } from 'date-fns/locale';
+import { startOfHour, isBefore, subDays } from 'date-fns';
+import pushText, { pushDate } from '../../../lib/pushText';
 import firebaseAdmin from 'firebase-admin';
 
 import User from '../../models/User';
@@ -26,8 +26,6 @@ class TaskController {
       approval_required,
       start_date,
       due_date,
-      created,
-      due,
     } = req.body;
 
     const requester = await User.findByPk(req.userId);
@@ -76,18 +74,16 @@ class TaskController {
       due_date: dueAt,
     });
 
-    const parsedDueDate = dueAt
-      ? format(dueAt, "MMM'/'dd'/'yyyy", { locale: enUS })
-      : null;
+    const parsedDueDate = dueAt ? pushDate(assignee, dueAt) : null;
 
     io.emit(`task_create_${assignee_email}`, 'Task Created');
 
     if (assignee.notification_token) {
-      // `created`/`due` are optional client-localized labels (legacy apps send
-      // them); default to English so newer clients don't render "undefined".
+      // Copy is localized for the recipient (users.locale), not the sender.
+      const createdLabel = pushText(assignee, 'newTask');
       const pushBody = parsedDueDate
-        ? `${created || 'New task'}: ${name} | ${due || 'due'} ${parsedDueDate}`
-        : `${created || 'New task'}: ${name}`;
+        ? `${createdLabel}: ${name} | ${pushText(assignee, 'due')} ${parsedDueDate}`
+        : `${createdLabel}: ${name}`;
       const pushMessage = {
         notification: {
           title: `${requester.user_name}`,

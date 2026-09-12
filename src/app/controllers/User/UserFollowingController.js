@@ -4,6 +4,7 @@ import firebaseAdmin from 'firebase-admin';
 import User from '../../models/User';
 import File from '../../models/File';
 import logger from '../../../lib/logger';
+import pushText from '../../../lib/pushText';
 
 class UserFollowingController {
   // Follow another user. body: { user_email (me), target_email (whom I follow) }
@@ -25,12 +26,12 @@ class UserFollowingController {
     const pushMessage = {
       notification: {
         title: `${follower.user_name}`,
-        body: `started following you`,
+        body: pushText(target, 'startedFollowing'),
       },
       data: {
         channelId: 'godtaskerChannel01', // (required)
         title: `${follower.user_name}`,
-        message: `started following you`,
+        message: pushText(target, 'startedFollowing'),
       },
       android: { notification: { sound: 'default' } },
       apns: { payload: { aps: { sound: 'default' } } },

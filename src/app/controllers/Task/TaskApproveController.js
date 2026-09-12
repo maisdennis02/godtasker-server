@@ -2,13 +2,13 @@ import firebaseAdmin from 'firebase-admin';
 import Task from '../../models/Task';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
+import pushText from '../../../lib/pushText';
 
 // The requester signs off on an approval-required task: stamps end_date, which
 // is the single "completed" signal everywhere else.
 class TaskApproveController {
   async update(req, res) {
     const { id } = req.params;
-    const { messageTitle, messageMessage } = req.body;
 
     let task = await Task.findByPk(id);
     if (!task) return res.status(404).json({ error: 'Task not found' });
@@ -36,9 +36,10 @@ class TaskApproveController {
     const requester = await User.findByPk(task.requester_id);
     const assignee = await User.findByPk(task.assignee_id);
 
-    const title = messageTitle || `${requester.user_name}`;
-    const body =
-      messageMessage || `"${task.name ?? `task #${task.id}`}" was approved`;
+    const title = `${requester.user_name}`;
+    const body = pushText(assignee, 'approved', {
+      name: task.name ?? `task #${task.id}`,
+    });
 
     const pushMessage = {
       notification: { title, body },

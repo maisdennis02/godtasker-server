@@ -3,12 +3,13 @@ import Task from '../../models/Task';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
 import { subtaskProgress } from '../../utils/subtasks';
+import pushText from '../../../lib/pushText';
 
 class TaskWorkerSubtaskNotificationController {
   // ---------------------------------------------------------------------------
   async update(req, res) {
     const { id } = req.params; // id: task_id
-    const { position, text } = req.body;
+    const { position } = req.body;
     const {
       name,
       description,
@@ -59,17 +60,15 @@ class TaskWorkerSubtaskNotificationController {
     // console.log(task.sub_task_list);
     let pushMessage = {};
     try {
-      // `text` is an optional client-localized label array ([prefix, done,
-      // separator, undone]); default to English so a client that omits it (or
-      // a subtask without a description) never renders "undefined".
-      const labels = Array.isArray(text)
-        ? text
-        : ['Subtask', 'completed', '·', 'reopened'];
+      // Localized for the requester (users.locale); the client's `text` labels
+      // are ignored so the recipient never gets the sender's language.
       const subtask = task.sub_task_list?.[position] ?? {};
-      const pushTitle = `${labels[0]}: ${task.name}:`;
-      const pushBody = `${assignee.user_name} ${
-        subtask.complete ? `${labels[1]}` : `${labels[3]}`
-      } ${labels[2]}: ${subtask.description ?? ''}`;
+      const pushTitle = pushText(requester, 'subtaskTitle', { name: task.name });
+      const pushBody = pushText(
+        requester,
+        subtask.complete ? 'subtaskDone' : 'subtaskReopened',
+        { who: assignee.user_name, desc: subtask.description ?? '' }
+      );
       pushMessage = {
         notification: {
           title: pushTitle,

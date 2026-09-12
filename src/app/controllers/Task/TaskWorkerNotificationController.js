@@ -2,6 +2,7 @@ import firebaseAdmin from 'firebase-admin';
 import Task from '../../models/Task';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
+import pushText from '../../../lib/pushText';
 
 class TaskWorkerNotificationController {
   // ---------------------------------------------------------------------------
@@ -55,7 +56,13 @@ class TaskWorkerNotificationController {
     try {
       // When Worker Declines or Accepts the Task. `status.comment` is optional
       // (older clients omit it) — fall back so the body never reads "undefined".
-      const comment = task.status?.comment ?? `${task.name ?? 'Task'} updated`;
+      // status 2 = started; compose that one for the requester's locale and
+      // fall back to the client comment for anything else.
+      const taskName = task.name ?? 'Task';
+      const comment =
+        task.status?.status === 2
+          ? pushText(requester, 'taskStarted', { who: assignee.user_name, name: taskName })
+          : task.status?.comment ?? pushText(requester, 'taskUpdated', { name: taskName });
       pushMessage = {
         notification: {
           title: `${assignee.user_name}:`,

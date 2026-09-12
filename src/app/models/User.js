@@ -26,6 +26,7 @@ class User extends Model {
         points: Sequelize.INTEGER,
         occupation: Sequelize.STRING,
         notification_token: Sequelize.STRING,
+        locale: Sequelize.STRING,
         flag_count: Sequelize.INTEGER,
         flagged_list: Sequelize.ARRAY(Sequelize.STRING),
         blocked_list: Sequelize.ARRAY(Sequelize.STRING),

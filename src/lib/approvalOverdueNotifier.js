@@ -3,6 +3,7 @@ import firebaseAdmin from 'firebase-admin';
 import Task from '../app/models/Task';
 import User from '../app/models/User';
 import logger from './logger';
+import pushText from './pushText';
 
 // A task sits in "awaiting approval" for at most this long before it counts as
 // approval-overdue. Mirrored on the mobile client (features/tasks/util.ts) —
@@ -29,7 +30,7 @@ async function notifyOverdueApprovals() {
       {
         model: User,
         as: 'requester',
-        attributes: ['id', 'user_name', 'notification_token'],
+        attributes: ['id', 'user_name', 'notification_token', 'locale'],
       },
       { model: User, as: 'assignee', attributes: ['id', 'user_name'] },
     ],
@@ -44,7 +45,7 @@ async function notifyOverdueApprovals() {
 
     const taskName = task.name ?? `task #${task.id}`;
     const title = task.assignee?.user_name || 'LalaTask';
-    const body = `"${taskName}" has been awaiting your approval for 3 days`;
+    const body = pushText(task.requester, 'approvalOverdue', { name: taskName });
 
     firebaseAdmin
       .messaging()

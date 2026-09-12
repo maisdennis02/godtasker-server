@@ -6,6 +6,7 @@ import File from '../../models/File';
 import Message from '../../models/Message';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
+import pushText from '../../../lib/pushText';
 
 class MessageController {
   async store(req, res) {
@@ -110,7 +111,7 @@ class MessageController {
       // New message push. Both fields are client-supplied and optional — fall
       // back so the notification never renders "undefined:". (No trailing
       // colon on the body; it's the message text itself.)
-      const pushTitle = `${messageObject.sender_name ?? 'New message'}:`;
+      const pushTitle = `${messageObject.sender_name ?? pushText(user, 'newMessage')}:`;
       const pushBody = messageObject.message ?? '';
       pushMessage = {
         notification: {

@@ -8,6 +8,7 @@ import { io } from '../../http';
 import logger from '../../lib/logger';
 import { isBlockedBetween } from '../utils/blocks';
 import { parseAvailability, availabilityViolation } from '../utils/availability';
+import pushText from '../../lib/pushText';
 
 const SCHEDULE_KEYS = [
   'start_date',
@@ -306,12 +307,12 @@ class OfferingController {
       const pushMessage = {
         notification: {
           title: `${requester.user_name}`,
-          body: `requested: ${offering.name}`,
+          body: pushText(assignee, 'offeringRequested', { name: offering.name }),
         },
         data: {
           channelId: 'godtaskerChannel01',
           title: `${requester.user_name}`,
-          message: `requested: ${offering.name}`,
+          message: pushText(assignee, 'offeringRequested', { name: offering.name }),
         },
         android: { notification: { sound: 'default' } },
         apns: { payload: { aps: { sound: 'default' } } },

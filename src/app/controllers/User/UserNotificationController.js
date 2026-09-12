@@ -4,12 +4,17 @@ import logger from '../../../lib/logger';
 class UserNotificationController {
   async update(req, res) {
     const { id } = req.params;
-    const { notification_token } = req.body;
+    const { notification_token, locale } = req.body;
 
     try {
       const user = await User.findByPk(id);
       const updatedUser = user
-        ? await user.update({ notification_token })
+        ? await user.update({
+            notification_token,
+            // Only overwrite the locale when the client sent one (logout clears
+            // the token alone).
+            ...(typeof locale === 'string' ? { locale: locale.slice(0, 16) } : {}),
+          })
         : null;
 
       return res.json({ user: updatedUser });

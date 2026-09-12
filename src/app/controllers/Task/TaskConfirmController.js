@@ -3,11 +3,12 @@ import Task from '../../models/Task';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
 import { allSubtasksComplete } from '../../utils/subtasks';
+import pushText from '../../../lib/pushText';
 
 class TaskConfirmController {
   async update(req, res) {
     const { id } = req.params; // id: task_id.
-    const { signature_id, score, messageTitle, messageMessage } = req.body;
+    const { signature_id, score } = req.body;
 
     let task = await Task.findByPk(id);
     if (!task) return res.status(404).json({ error: 'Task not found' });
@@ -59,14 +60,16 @@ class TaskConfirmController {
 
     // FCM rejects non-string data values, so never let undefined through.
     const taskName = task.name ?? `task #${task.id}`;
-    const title =
-      messageTitle ||
-      (task.approval_required ? 'Approval requested' : 'Task completed');
-    const body =
-      messageMessage ||
-      (task.approval_required
-        ? `"${taskName}" is awaiting your approval`
-        : `"${taskName}" was marked done`);
+    // Localized for the requester (the recipient), ignoring any client copy.
+    const title = pushText(
+      requester,
+      task.approval_required ? 'approvalRequested' : 'taskCompleted'
+    );
+    const body = pushText(
+      requester,
+      task.approval_required ? 'awaitingApproval' : 'markedDone',
+      { name: taskName }
+    );
 
     const pushMessage = {
       notification: {
