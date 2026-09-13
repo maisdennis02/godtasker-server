@@ -7,6 +7,7 @@ import File from '../models/File';
 import logger from '../../lib/logger';
 import { buildSession } from '../utils/session';
 import { importGoogleAvatar } from '../../lib/googleAvatar';
+import { sendWelcomeTask } from '../../lib/onboarding';
 
 const oauthClient = new OAuth2Client();
 
@@ -80,6 +81,7 @@ class GoogleSessionController {
     // 3) Brand-new account. No password: password_hash stays null and the
     //    email/password login rejects it until the user sets one in-app.
     if (!user) {
+      const { locale } = req.body;
       const created = await User.create({
         google_id: googleId,
         email,
@@ -87,8 +89,10 @@ class GoogleSessionController {
         first_name: payload.given_name || null,
         last_name: payload.family_name || null,
         points: 0,
+        locale: typeof locale === 'string' ? locale.slice(0, 16) : null,
       });
       logger.info({ userId: created.id, picture: !!picture }, '[google-signin] new user');
+      await sendWelcomeTask(created, created.locale);
       user = await User.findByPk(created.id, { include });
     }
 

@@ -36,6 +36,10 @@ services:
       # audience: the Web client id [+ iOS client id]). Blank = endpoint returns 503.
       - key: GOOGLE_CLIENT_IDS
         sync: false
+      # ── Onboarding: the system account that sends every new user a welcome task
+      # (create it with `node scripts/ensure-onboarding-account.js`) ──
+      - key: ONBOARDING_SENDER_EMAIL
+        value: onboarding@lalatask.com
       # ── AWS S3 (file uploads) ──
       - key: AWS_REGION
         value: us-east-2 # bucket godtaskerfiles lives in us-east-2

@@ -4,6 +4,8 @@ import { Op } from 'sequelize';
 import User from '../../models/User';
 import File from '../../models/File';
 import Message from '../../models/Message';
+import Task from '../../models/Task';
+import { ONBOARDING_SENDER_EMAIL, sendWelcomeTask } from '../../../lib/onboarding';
 import ChatMessage from '../../models/ChatMessage';
 
 class UserController {
@@ -22,7 +24,7 @@ class UserController {
       return res.status(400).json({ error: 'Create User fail: Schema error' });
     }
 
-    const { subscriber, user_name, hint, email, password, points, bio } =
+    const { subscriber, user_name, hint, email, password, points, bio, locale } =
       req.body;
 
     const userExists = await User.findOne({ where: { email } });
@@ -41,7 +43,12 @@ class UserController {
       password,
       points,
       bio,
+      // Device/browser language, so the welcome task (and pushes) come out in
+      // the right language from the first minute.
+      locale: typeof locale === 'string' ? locale.slice(0, 16) : null,
     });
+
+    await sendWelcomeTask(user, user.locale);
 
     return res.json({ user });
   }
@@ -85,7 +92,10 @@ class UserController {
   }
 
   async index(req, res) {
-    const users = await User.findAll({ where: { canceled_at: null } });
+    const users = await User.findAll({
+      // The onboarding system account isn't a person to follow or chat with.
+      where: { canceled_at: null, email: { [Op.ne]: ONBOARDING_SENDER_EMAIL } },
+    });
     return res.json(users);
   }
 
@@ -117,6 +127,15 @@ class UserController {
         where: {
           [Op.or]: [{ user_email: email }, { worker_email: email }],
         },
+        transaction,
+      });
+      // Tasks the user sent or received go with the account. The deletion page
+      // promises other people only that their tasks "may" remain, and a task
+      // with one side missing never shows up in anyone's lists anyway (the
+      // list queries inner-join both parties), so keeping them just leaves
+      // ghosts behind foreign-key rows.
+      await Task.destroy({
+        where: { [Op.or]: [{ requester_id: user.id }, { assignee_id: user.id }] },
         transaction,
       });
       // Follow rows: following_id side cascades on delete, but the follower_id
