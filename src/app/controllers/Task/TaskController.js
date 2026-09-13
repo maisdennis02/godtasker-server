@@ -6,11 +6,11 @@ import firebaseAdmin from 'firebase-admin';
 import User from '../../models/User';
 import Task from '../../models/Task';
 import File from '../../models/File';
-import { io } from '../../../http';
 import logger from '../../../lib/logger';
 import { subtaskProgress } from '../../utils/subtasks';
 import { toDateOrNull } from '../../utils/dates';
 import { isBlockedBetween } from '../../utils/blocks';
+import { emitTaskChanged } from '../../../lib/taskEvents';
 
 class TaskController {
   async store(req, res) {
@@ -76,7 +76,7 @@ class TaskController {
 
     const parsedDueDate = dueAt ? pushDate(assignee, dueAt) : null;
 
-    io.emit(`task_create_${assignee_email}`, 'Task Created');
+    emitTaskChanged(task, 'created');
 
     if (assignee.notification_token) {
       // Copy is localized for the recipient (users.locale), not the sender.
@@ -185,6 +185,8 @@ class TaskController {
       due_date: nextDue,
     });
 
+    emitTaskChanged(updated, 'updated');
+
     return res.json(updated);
   }
 
@@ -194,6 +196,8 @@ class TaskController {
     if (!task) return res.status(404).json({ error: 'Task not found' });
 
     await task.destroy();
+    // The instance keeps its ids after destroy, so both parties still get told.
+    emitTaskChanged(task, 'deleted');
     return res.json({ deleted: true, id });
   }
 }

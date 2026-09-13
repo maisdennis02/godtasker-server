@@ -123,7 +123,7 @@ class ChatMessageController {
 
     if (recipient_email) {
       // Wake the recipient's conversation list even when they haven't joined
-      // this room (same user-addressed pattern as `task_create_${email}`).
+      // this room.
       io.emit(`chat:notify_${recipient_email}`, { chat_id: Number(chatId) });
 
       // Push notification for the new message (same shape as the task pushes).

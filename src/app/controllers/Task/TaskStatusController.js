@@ -1,5 +1,6 @@
 
 import Task from '../../models/Task';
+import { emitTaskChanged } from '../../../lib/taskEvents';
 // -----------------------------------------------------------------------------
 class TaskStatusController {
   async update(req, res) {
@@ -34,6 +35,8 @@ class TaskStatusController {
       canceled_at,
       due_date,
     });
+
+    emitTaskChanged(task, 'updated');
 
     return res.json(task);
   }

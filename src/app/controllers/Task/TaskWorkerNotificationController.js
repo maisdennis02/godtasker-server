@@ -3,6 +3,7 @@ import Task from '../../models/Task';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
 import pushText from '../../../lib/pushText';
+import { emitTaskChanged } from '../../../lib/taskEvents';
 
 class TaskWorkerNotificationController {
   // ---------------------------------------------------------------------------
@@ -42,6 +43,8 @@ class TaskWorkerNotificationController {
       canceled_at,
       due_date,
     });
+
+    emitTaskChanged(task, 'updated');
 
     // Firebase Notification ***************************************************
     const requester = await User.findByPk(task.requester_id);

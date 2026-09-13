@@ -2,6 +2,7 @@ import firebaseAdmin from 'firebase-admin';
 import Task from '../../models/Task';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
+import { emitTaskChanged } from '../../../lib/taskEvents';
 
 class TaskReviveController {
   async update(req, res) {
@@ -15,6 +16,8 @@ class TaskReviveController {
       canceled_at: null,
       status,
     });
+    emitTaskChanged(task, 'revived');
+
     // Firebase Notification ***************************************************
     const requester = await User.findByPk(task.requester_id);
     const assignee = await User.findByPk(task.assignee_id);

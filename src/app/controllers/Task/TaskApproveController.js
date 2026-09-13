@@ -3,6 +3,7 @@ import Task from '../../models/Task';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
 import pushText from '../../../lib/pushText';
+import { emitTaskChanged } from '../../../lib/taskEvents';
 
 // The requester signs off on an approval-required task: stamps end_date, which
 // is the single "completed" signal everywhere else.
@@ -31,6 +32,8 @@ class TaskApproveController {
     }
 
     task = await task.update({ end_date: new Date() });
+
+    emitTaskChanged(task, 'approved');
 
     // Firebase Notification ***************************************************
     const requester = await User.findByPk(task.requester_id);

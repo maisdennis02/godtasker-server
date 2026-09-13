@@ -4,6 +4,7 @@ import User from '../../models/User';
 import logger from '../../../lib/logger';
 import { subtaskProgress } from '../../utils/subtasks';
 import pushText from '../../../lib/pushText';
+import { emitTaskChanged } from '../../../lib/taskEvents';
 
 class TaskWorkerSubtaskNotificationController {
   // ---------------------------------------------------------------------------
@@ -48,6 +49,7 @@ class TaskWorkerSubtaskNotificationController {
     // Keep the progress bar authoritative on the server, derived from the
     // subtasks the client just sent.
     task = await task.update({ status_bar: subtaskProgress(task.sub_task_list) });
+    emitTaskChanged(task, 'subtask');
 
     // Firebase Notification ***************************************************
     const requester = await User.findByPk(task.requester_id);

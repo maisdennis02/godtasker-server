@@ -4,7 +4,7 @@ import Sequelize from 'sequelize';
 import Offering from '../models/Offering';
 import Task from '../models/Task';
 import User from '../models/User';
-import { io } from '../../http';
+import { emitTaskChanged } from '../../lib/taskEvents';
 import logger from '../../lib/logger';
 import { isBlockedBetween } from '../utils/blocks';
 import { parseAvailability, availabilityViolation } from '../utils/availability';
@@ -301,7 +301,7 @@ class OfferingController {
       return res.status(500).json({ error: 'Could not create the task' });
     }
 
-    io.emit(`task_create_${assignee.email}`, 'Task Created');
+    emitTaskChanged(task, 'created');
 
     if (assignee.notification_token) {
       const pushMessage = {

@@ -2,6 +2,7 @@ import firebaseAdmin from 'firebase-admin';
 import Task from '../../models/Task';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
+import { emitTaskChanged } from '../../../lib/taskEvents';
 
 // The requester sends a task back: either rejecting an approval request or
 // reopening an already-completed task. Feedback is mandatory — the assignee
@@ -45,6 +46,8 @@ class TaskReopenController {
       reopen_count: (task.reopen_count ?? 0) + 1,
       reopen_feedback: trimmedFeedback.slice(0, 2200),
     });
+
+    emitTaskChanged(task, 'reopened');
 
     // Firebase Notification ***************************************************
     const requester = await User.findByPk(task.requester_id);

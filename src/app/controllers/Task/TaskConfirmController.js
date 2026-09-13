@@ -4,6 +4,7 @@ import User from '../../models/User';
 import logger from '../../../lib/logger';
 import { allSubtasksComplete } from '../../utils/subtasks';
 import pushText from '../../../lib/pushText';
+import { emitTaskChanged } from '../../../lib/taskEvents';
 
 class TaskConfirmController {
   async update(req, res) {
@@ -53,6 +54,8 @@ class TaskConfirmController {
         score,
       });
     }
+
+    emitTaskChanged(task, 'completed');
 
     // Firebase Notification ***************************************************
     // The assignee is the one confirming, so the requester gets the push.
