@@ -20,6 +20,10 @@ class FileController {
       if (obj.ContentType) res.set('Content-Type', obj.ContentType);
       // Immutable content (key includes a timestamp) — let clients/CDNs cache it.
       res.set('Cache-Control', 'public, max-age=86400, immutable');
+      // helmet defaults every response to CORP "same-origin", which makes browsers
+      // refuse to render these images inside the web app (a different origin).
+      // The proxy exists precisely to be embedded cross-origin, so relax it here.
+      res.set('Cross-Origin-Resource-Policy', 'cross-origin');
       obj.Body.on('error', () => res.destroy()).pipe(res);
     } catch (err) {
       logger.debug({ err, key }, 'file proxy miss');
