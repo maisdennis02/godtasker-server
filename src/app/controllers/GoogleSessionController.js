@@ -6,6 +6,7 @@ import User from '../models/User';
 import File from '../models/File';
 import logger from '../../lib/logger';
 import { buildSession } from '../utils/session';
+import { importGoogleAvatar } from '../../lib/googleAvatar';
 
 const oauthClient = new OAuth2Client();
 
@@ -93,6 +94,14 @@ class GoogleSessionController {
 
     if (user.canceled_at) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // No avatar yet (new account, or a linked account that never set one):
+    // seed it from the Google profile photo so the session already carries it.
+    if (!user.avatar_id && picture) {
+      if (await importGoogleAvatar(user, picture)) {
+        user = await User.findByPk(user.id, { include });
+      }
     }
 
     return res.json(buildSession(user));
