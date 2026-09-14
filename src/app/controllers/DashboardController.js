@@ -1,13 +1,16 @@
 import { Op } from 'sequelize';
-import { addDays, endOfISOWeek } from 'date-fns';
 
 import User from '../models/User';
 import File from '../models/File';
 import Task from '../models/Task';
+import { countDueDates, resolveTimeZone } from '../utils/dueBuckets';
 
 class DashboardController {
+  // GET /dashboard/:id — always the signed-in user's own dashboard. The :id in
+  // the path is kept for existing clients (they only ever pass their own id)
+  // but ignored, so nobody can read another account's profile and counts.
   async index(req, res) {
-    const { id } = req.params;
+    const id = req.userId;
 
     const user = await User.findByPk(id, {
       include: [
@@ -18,6 +21,7 @@ class DashboardController {
         },
       ],
     });
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
     // following count ---------------------------------------------------------
     // Exclude deactivated accounts (consistent with the followers count and the
@@ -35,11 +39,11 @@ class DashboardController {
     });
     const countFollowers = followers.length;
 
-    // Tasks I sent (requester) and tasks I received (assignee) — always the
-    // authenticated user's own tasks. Derive from the token, not a client id,
-    // so nobody can read another user's task counts by changing the query.
-    const user_id = req.userId;
-    const worker_id = req.userId;
+    // Tasks I sent (requester) and tasks I received (assignee).
+    const user_id = id;
+    const worker_id = id;
+    const now = new Date();
+    const timeZone = resolveTimeZone(req.query.tz);
 
     const userCountSent = await Task.count({
       where: {
@@ -73,49 +77,11 @@ class DashboardController {
       where: { requester_id: user_id, canceled_at: { [Op.ne]: null } },
     });
 
-    function userOverDue() {
-      const array = [];
-      userInitiated.map(i => {
-        if (i.due_date < new Date()) array.push(i.due_date);
-        return array;
-      });
-      return array;
-    }
-
-    function userTodayDue() {
-      const array = [];
-      userInitiated.map(i => {
-        if (i.due_date === new Date()) array.push(i.due_date);
-        return array;
-      });
-      return array;
-    }
-
-    function userTomorrowDue() {
-      const array = [];
-      userInitiated.map(i => {
-        if (i.due_date === addDays(new Date(), 1)) array.push(i.due_date);
-        return array;
-      });
-      return array;
-    }
-
-    function userThisWeekDue() {
-      const array = [];
-      userInitiated.map(i => {
-        if (i.due_date < endOfISOWeek(new Date()) && i.due_date > new Date()) {
-          array.push(i.due_date);
-        }
-        return array;
-      });
-      return array;
-    }
-
-    const userCountInitiated = userInitiated.length;
-    const userCountOverDue = userOverDue().length;
-    const userCountTodayDue = userTodayDue().length;
-    const userCountTomorrowDue = userTomorrowDue().length;
-    const userCountThisWeekDue = userThisWeekDue().length;
+    const userDue = countDueDates(
+      userInitiated.map(i => i.due_date),
+      now,
+      timeZone
+    );
 
     const workerCountReceived = await Task.count({
       where: {
@@ -149,70 +115,32 @@ class DashboardController {
       where: { assignee_id: worker_id, canceled_at: { [Op.ne]: null } },
     });
 
-    function workerOverDue() {
-      const array = [];
-      workerInitiated.map(i => {
-        if (i.due_date < new Date()) array.push(i.due_date);
-        return array;
-      });
-      return array;
-    }
-
-    function workerTodayDue() {
-      const array = [];
-      workerInitiated.map(i => {
-        if (i.due_date === new Date()) array.push(i.due_date);
-        return array;
-      });
-      return array;
-    }
-
-    function workerTomorrowDue() {
-      const array = [];
-      workerInitiated.map(i => {
-        if (i.due_date === addDays(new Date(), 1)) array.push(i.due_date);
-        return array;
-      });
-      return array;
-    }
-
-    function workerThisWeekDue() {
-      const array = [];
-      workerInitiated.map(i => {
-        if (i.due_date < endOfISOWeek(new Date()) && i.due_date > new Date()) {
-          array.push(i.due_date);
-        }
-        return array;
-      });
-      return array;
-    }
-
-    const workerCountInitiated = workerInitiated.length;
-    const workerCountOverDue = workerOverDue().length;
-    const workerCountTodayDue = workerTodayDue().length;
-    const workerCountTomorrowDue = workerTomorrowDue().length;
-    const workerCountThisWeekDue = workerThisWeekDue().length;
+    const workerDue = countDueDates(
+      workerInitiated.map(i => i.due_date),
+      now,
+      timeZone
+    );
 
     return res.json({
       countFollowing,
       countFollowers,
       user,
       userCountSent,
-      userCountInitiated,
+      userCountInitiated: userInitiated.length,
       userCountFinished,
       userCountCanceled,
-      userCountOverDue,
-      userCountTodayDue,
-      userCountTomorrowDue,
-      userCountThisWeekDue,
+      userCountOverDue: userDue.overDue,
+      userCountTodayDue: userDue.todayDue,
+      userCountTomorrowDue: userDue.tomorrowDue,
+      userCountThisWeekDue: userDue.thisWeekDue,
       workerCountReceived,
-      workerCountInitiated,
+      workerCountInitiated: workerInitiated.length,
       workerCountFinished,
       workerCountCanceled,
-      workerCountOverDue,
-      workerCountTodayDue,
-      workerCountTomorrowDue,
-      workerCountThisWeekDue,
+      workerCountOverDue: workerDue.overDue,
+      workerCountTodayDue: workerDue.todayDue,
+      workerCountTomorrowDue: workerDue.tomorrowDue,
+      workerCountThisWeekDue: workerDue.thisWeekDue,
     });
   }
 }

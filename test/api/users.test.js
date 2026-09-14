@@ -103,7 +103,68 @@ test('block / unblock: list is deduplicated and blocking hides the person from t
   assert.deepEqual(stored.blocked_list, []);
   assert.equal((await as(bob).post('/tasks').send({ assignee_email: alice.email, name: 'x' })).status, 200);
 
-  assert.equal((await as(alice).put('/users/block').send({ email: 'ghost@test.local', blocker_email: bob.email })).status, 404);
+  assert.equal((await as(alice).put('/users/block').send({ email: alice.email, blocker_email: 'ghost@test.local' })).status, 404);
+  assert.equal((await as(alice).put('/users/block').send({ blocker_email: alice.email })).status, 400);
+});
+
+test('block / unblock / report / follow always act as the signed-in user, whatever the body says', async () => {
+  const carol = await createUser({ user_name: 'carol' });
+
+  // Alice names Bob as "me" — only her own list changes.
+  assert.equal((await as(alice).put('/users/block').send({ email: bob.email, blocker_email: carol.email })).status, 200);
+  assert.deepEqual((await User.findByPk(bob.id)).blocked_list ?? [], []);
+  assert.deepEqual((await User.findByPk(alice.id)).blocked_list, [carol.email]);
+
+  await bob.update({ blocked_list: [carol.email] });
+  await as(alice).put('/users/unblock').send({ email: bob.email, unblocker_email: carol.email });
+  assert.deepEqual((await User.findByPk(bob.id)).blocked_list, [carol.email]);
+  assert.deepEqual((await User.findByPk(alice.id)).blocked_list, []);
+
+  // A report is filed by Alice even when the body claims Bob filed it.
+  await as(alice).put('/users/flag').send({ email: carol.email, flagger_email: bob.email });
+  const flagged = await User.findByPk(carol.id);
+  assert.deepEqual(flagged.flagged_list, [alice.email]);
+  assert.equal(flagged.flag_count, 1);
+  assert.equal((await as(alice).put('/users/flag').send({ email: alice.email })).status, 400);
+
+  // Following "as Bob" makes Alice the follower.
+  assert.equal((await as(alice).post('/users/following').send({ user_email: bob.email, target_email: carol.email })).status, 200);
+  assert.equal((await bob.getFollowing()).length, 0);
+  assert.deepEqual((await alice.getFollowing()).map(u => u.id), [carol.id]);
+  await bob.addFollowing(carol.id);
+  await as(alice).put('/users/following').send({ user_email: bob.email, target_email: carol.email });
+  assert.equal((await bob.getFollowing()).length, 1);
+  assert.equal((await alice.getFollowing()).length, 0);
+});
+
+test('dashboard: always my own; due tiles count by the viewer time zone and skip tasks with no due date', async () => {
+  const hour = 3600 * 1000;
+  const started = { initiated_at: new Date() };
+  await createTask(alice, bob, { ...started, due_date: new Date(Date.now() - hour) });
+  await createTask(alice, bob, { ...started, due_date: null });
+  const t = new Date();
+  const tomorrowNoonUtc = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() + 1, 12));
+  await createTask(alice, bob, { ...started, due_date: tomorrowNoonUtc });
+  const soon = new Date(Date.now() + 60 * 1000);
+  await createTask(bob, alice, { ...started, due_date: soon });
+
+  // Asking for Bob's dashboard still returns Alice's.
+  const res = await as(alice).get(`/dashboard/${bob.id}?tz=UTC`);
+  assert.equal(res.status, 200);
+  assert.equal(res.body.user.id, alice.id);
+  assert.equal(res.body.userCountInitiated, 3);
+  assert.equal(res.body.userCountOverDue, 1);
+  assert.equal(res.body.userCountTomorrowDue, 1);
+  assert.equal(res.body.workerCountInitiated, 1);
+  // Skip the "today" check in the last minute of a UTC day.
+  if (soon.getUTCDate() === t.getUTCDate()) {
+    assert.equal(res.body.workerCountTodayDue, 1);
+  }
+
+  const counts = await as(alice).get('/tasks/user/count?tz=UTC');
+  assert.equal(counts.status, 200);
+  assert.equal(counts.body.countOverDue, 1);
+  assert.equal(counts.body.countTomorrowDue, 1);
 });
 
 test('follow / unfollow: no self-follow, pushes the target in their language, counts and lists update', async () => {

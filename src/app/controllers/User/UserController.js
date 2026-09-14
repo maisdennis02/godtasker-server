@@ -58,6 +58,7 @@ class UserController {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     // Never allow the hash to be set directly — password (VIRTUAL) is the only way in.
+    // eslint-disable-next-line no-unused-vars
     const { password, oldPassword, password_hash, ...rest } = req.body;
 
     // Changing the password requires proving knowledge of the current one.

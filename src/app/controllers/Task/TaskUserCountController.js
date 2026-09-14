@@ -1,16 +1,15 @@
 import { Op } from 'sequelize';
-import { addDays, endOfISOWeek } from 'date-fns';
 import Task from '../../models/Task';
+import { countDueDates, resolveTimeZone } from '../../utils/dueBuckets';
 // -----------------------------------------------------------------------------
 class TaskUserCountController {
   async index(req, res) {
     // Owner comes from the auth token, not a client-supplied id.
     const requesterID = req.userId;
-    const parsedRequesterID = req.userId;
 
     const countSent = await Task.count({
       where: {
-        requester_id: parsedRequesterID,
+        requester_id: requesterID,
         canceled_at: null,
         end_date: null,
         initiated_at: null,
@@ -21,7 +20,7 @@ class TaskUserCountController {
     const initiated = await Task.findAll({
       attributes: ['due_date'],
       where: {
-        requester_id: parsedRequesterID,
+        requester_id: requesterID,
         canceled_at: null,
         end_date: null,
         initiated_at: { [Op.ne]: null },
@@ -40,61 +39,21 @@ class TaskUserCountController {
       where: { requester_id: requesterID, canceled_at: { [Op.ne]: null } },
     });
 
-    function overDue() {
-      const array = [];
-      initiated.map(i => {
-        if (i.due_date < new Date()) {
-          array.push(i.due_date);
-        }
-      });
-      return array;
-    }
-
-    function todayDue() {
-      const array = [];
-      initiated.map(i => {
-        if (i.due_date === new Date()) {
-          array.push(i.due_date);
-        }
-      });
-      return array;
-    }
-
-    function tomorrowDue() {
-      const array = [];
-      initiated.map(i => {
-        if (i.due_date === addDays(new Date(), 1)) {
-          array.push(i.due_date);
-        }
-      });
-      return array;
-    }
-
-    function thisWeekDue() {
-      const array = [];
-      initiated.map(i => {
-        if (i.due_date < endOfISOWeek(new Date()) && i.due_date > new Date()) {
-          array.push(i.due_date);
-        }
-      });
-      return array;
-    }
-
-    const countInitiated = initiated.length;
-    const countOverDue = overDue().length;
-    const countTodayDue = todayDue().length;
-    const countTomorrowDue = tomorrowDue().length;
-    const countThisWeekDue = thisWeekDue().length;
+    const due = countDueDates(
+      initiated.map(i => i.due_date),
+      new Date(),
+      resolveTimeZone(req.query.tz)
+    );
 
     return res.json({
       countSent,
-      countInitiated,
+      countInitiated: initiated.length,
       countFinished,
       countCanceled,
-      countOverDue,
-      countTodayDue,
-      countTomorrowDue,
-      countThisWeekDue,
+      countOverDue: due.overDue,
+      countTodayDue: due.todayDue,
+      countTomorrowDue: due.tomorrowDue,
+      countThisWeekDue: due.thisWeekDue,
     });
   }
 }
