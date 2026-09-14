@@ -51,6 +51,32 @@ Server listens on `http://localhost:3333` by default.
 | `npm run db:migrate` | Run pending Sequelize migrations |
 | `npm run db:migrate:undo` | Roll back the last migration |
 | `npm run db:seed` | Run all Sequelize seeders |
+| `npm run test:db` | Start the throwaway test Postgres (Docker, port 5433) |
+| `npm test` | Run the test suite against that database |
+
+## Tests
+
+```bash
+npm run test:db   # once; creates the godtasker-test-pg container on 127.0.0.1:5433
+npm test          # ~3 min; 130 unit + API tests (node:test + supertest)
+```
+
+- `test/support/env.js` is preloaded and pins every env var the suite needs
+  (local DB on 5433, fake secrets, pushes/email/Google/S3 stubbed), so it
+  wins over the dotenv file. `test/support/db.js` refuses to start unless the
+  DB host is local and the name contains `test` — the suite cannot reach prod.
+- Migrations run automatically on first use; every test starts from truncated
+  tables plus the LalaTask onboarding account.
+- `test/unit/` covers pure helpers (subtasks, dates, blocks, i18n copy,
+  availability windows). `test/api/` drives the real Express app end to end:
+  sign-up/login, Google sign-in, password reset, the task lifecycle
+  (create → confirm → approve/reopen → cancel/revive) with the push sent to
+  each side in their language, task/offering/push-token authorization,
+  chat, follows/blocks, account deletion, offering seats and schedules, the
+  approval-overdue nag, and the auth rate limiter.
+- Pushes are captured in `stubs.fcm.sent`, emails in `stubs.mail.sent`, and
+  `stubs.setGooglePayload()` fakes Google's ID-token verification.
+- Set `TEST_LOG_LEVEL=debug` to see server logs, `TEST_SQL=1` for SQL.
 
 ## Project layout
 

@@ -16,7 +16,7 @@ const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 // than the tenure), like due-date overdue. This job only sends the one-time
 // nag push to the requester when a task crosses the line; the stamp on
 // approval_overdue_notified_at is what keeps it one-time.
-async function notifyOverdueApprovals() {
+export async function notifyOverdueApprovals() {
   const cutoff = new Date(Date.now() - APPROVAL_TENURE_MS);
 
   const tasks = await Task.findAll({
