@@ -3,14 +3,15 @@ import Task from '../../models/Task';
 import User from '../../models/User';
 import logger from '../../../lib/logger';
 import { emitTaskChanged } from '../../../lib/taskEvents';
+import { loadTaskFor } from '../../utils/taskAccess';
 
 class TaskCancelController {
   async update(req, res) {
     const { id } = req.params;
     const { status } = req.body;
 
-    let task = await Task.findByPk(id);
-    if (!task) return res.status(404).json({ error: 'Task not found' });
+    let task = await loadTaskFor(Task, id, req, res);
+    if (!task) return res;
 
     task = await task.update({
       canceled_at: new Date(),

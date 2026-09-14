@@ -170,6 +170,9 @@ class OfferingController {
 
     let offering = await Offering.findByPk(id);
     if (!offering) return res.status(404).json({ error: 'Offering not found' });
+    if (offering.creator_id !== req.userId) {
+      return res.status(403).json({ error: 'You can only edit your own offerings' });
+    }
 
     // Older clients (web) don't send schedule fields; leave them untouched
     // rather than wiping what was set from mobile.
@@ -198,6 +201,9 @@ class OfferingController {
     const { id } = req.params;
     const offering = await Offering.findByPk(id);
     if (!offering) return res.status(404).json({ error: 'Offering not found' });
+    if (offering.creator_id !== req.userId) {
+      return res.status(403).json({ error: 'You can only delete your own offerings' });
+    }
 
     await offering.destroy();
     return res.json({ deleted: true, id });

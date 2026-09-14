@@ -5,6 +5,7 @@ import logger from '../../../lib/logger';
 import { subtaskProgress } from '../../utils/subtasks';
 import pushText from '../../../lib/pushText';
 import { emitTaskChanged } from '../../../lib/taskEvents';
+import { loadTaskFor } from '../../utils/taskAccess';
 
 class TaskWorkerSubtaskNotificationController {
   // ---------------------------------------------------------------------------
@@ -27,7 +28,8 @@ class TaskWorkerSubtaskNotificationController {
       due_date,
     } = req.body;
 
-    let task = await Task.findByPk(id);
+    let task = await loadTaskFor(Task, id, req, res);
+    if (!task) return res;
     const assignee = await User.findByPk(task.assignee_id);
 
     task = await task.update({

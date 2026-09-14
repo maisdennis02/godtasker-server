@@ -4,6 +4,7 @@ import User from '../../models/User';
 import logger from '../../../lib/logger';
 import pushText from '../../../lib/pushText';
 import { emitTaskChanged } from '../../../lib/taskEvents';
+import { loadTaskFor } from '../../utils/taskAccess';
 
 class TaskWorkerNotificationController {
   // ---------------------------------------------------------------------------
@@ -26,7 +27,8 @@ class TaskWorkerNotificationController {
       due_date,
     } = req.body;
 
-    let task = await Task.findByPk(id);
+    let task = await loadTaskFor(Task, id, req, res);
+    if (!task) return res;
 
     task = await task.update({
       name,

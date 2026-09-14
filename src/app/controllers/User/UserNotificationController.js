@@ -6,6 +6,15 @@ class UserNotificationController {
     const { id } = req.params;
     const { notification_token, locale } = req.body;
 
+    // The push token is a delivery address: letting one account set another's
+    // would redirect (or silence) that person's notifications. The client
+    // always sends its own id here.
+    if (Number(id) !== req.userId) {
+      return res
+        .status(403)
+        .json({ error: 'You can only update your own notification settings' });
+    }
+
     try {
       const user = await User.findByPk(id);
       const updatedUser = user

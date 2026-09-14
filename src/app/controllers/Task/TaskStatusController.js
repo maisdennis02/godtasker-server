@@ -1,6 +1,7 @@
 
 import Task from '../../models/Task';
 import { emitTaskChanged } from '../../../lib/taskEvents';
+import { loadTaskFor } from '../../utils/taskAccess';
 // -----------------------------------------------------------------------------
 class TaskStatusController {
   async update(req, res) {
@@ -20,7 +21,8 @@ class TaskStatusController {
       due_date,
     } = req.body;
 
-    let task = await Task.findByPk(id);
+    let task = await loadTaskFor(Task, id, req, res);
+    if (!task) return res;
 
     task = await task.update({
       name,

@@ -2,6 +2,7 @@
 import Task from '../../models/Task';
 import User from '../../models/User';
 import File from '../../models/File';
+import { loadTaskFor } from '../../utils/taskAccess';
 // -----------------------------------------------------------------------------
 class TaskDetailController {
   async update(req, res) {
@@ -25,6 +26,11 @@ class TaskDetailController {
   // Filtered List. Pending
   async index(req, res) {
     const { id } = req.params;
+
+    // Only the two people on the task may read it (the client expects the
+    // historical one-element array shape, so keep findAll below).
+    const own = await loadTaskFor(Task, id, req, res);
+    if (!own) return res;
 
     const tasks = await Task.findAll({
       where: {

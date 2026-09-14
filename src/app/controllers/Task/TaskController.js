@@ -10,6 +10,7 @@ import logger from '../../../lib/logger';
 import { subtaskProgress } from '../../utils/subtasks';
 import { toDateOrNull } from '../../utils/dates';
 import { isBlockedBetween } from '../../utils/blocks';
+import { loadTaskFor } from '../../utils/taskAccess';
 import { emitTaskChanged } from '../../../lib/taskEvents';
 
 class TaskController {
@@ -152,8 +153,8 @@ class TaskController {
       due_date,
     } = req.body;
 
-    const task = await Task.findByPk(id);
-    if (!task) return res.status(404).json({ error: 'Task not found' });
+    const task = await loadTaskFor(Task, id, req, res);
+    if (!task) return res;
 
     // A task spawned from an offering with a fixed duration keeps due locked
     // to start + duration, whatever due the client sends.
@@ -192,8 +193,8 @@ class TaskController {
 
   async delete(req, res) {
     const { id } = req.params;
-    const task = await Task.findByPk(id);
-    if (!task) return res.status(404).json({ error: 'Task not found' });
+    const task = await loadTaskFor(Task, id, req, res);
+    if (!task) return res;
 
     await task.destroy();
     // The instance keeps its ids after destroy, so both parties still get told.
