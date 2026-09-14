@@ -5,15 +5,18 @@ import User from '../../models/User';
 import File from '../../models/File';
 import logger from '../../../lib/logger';
 import pushText from '../../../lib/pushText';
+import { loadCurrentUser } from '../../utils/currentUser';
 
 class UserFollowingController {
-  // Follow another user. body: { user_email (me), target_email (whom I follow) }
+  // Follow another user. body: { target_email (whom I follow) }. The follower
+  // is always the signed-in user; a `user_email` in the body is ignored.
   async store(req, res) {
-    const { user_email, target_email } = req.body;
+    const { target_email } = req.body;
 
-    const follower = await User.findOne({ where: { email: user_email } });
+    const follower = await loadCurrentUser(req, res);
+    if (!follower) return null;
     const target = await User.findOne({ where: { email: target_email } });
-    if (!follower || !target) {
+    if (!target) {
       return res.status(404).json({ error: 'User not found' });
     }
     if (follower.id === target.id) {
@@ -69,12 +72,13 @@ class UserFollowingController {
   }
 
   // ---------------------------------------------------------------------------
-  // Unfollow. body: { user_email (me), target_email }
+  // Unfollow. body: { target_email } — the signed-in user stops following them.
   async update(req, res) {
-    const { user_email, target_email } = req.body;
-    const follower = await User.findOne({ where: { email: user_email } });
+    const { target_email } = req.body;
+    const follower = await loadCurrentUser(req, res);
+    if (!follower) return null;
     const target = await User.findOne({ where: { email: target_email } });
-    if (!follower || !target) {
+    if (!target) {
       return res.status(404).json({ error: 'User not found' });
     }
 

@@ -7,11 +7,32 @@ import User from '../../models/User';
 import { io } from '../../../http';
 import logger from '../../../lib/logger';
 import { isBlockedBetween } from '../../utils/blocks';
+import { isChatParty, otherParty } from '../../utils/chatAccess';
+import { loadCurrentUser } from '../../utils/currentUser';
+
+// Loads the conversation header for `chatId` and the signed-in user, and
+// rejects anyone who isn't one of its two parties. Sends the response and
+// returns null when the caller may not touch it.
+async function loadChatFor(chatId, req, res) {
+  const me = await loadCurrentUser(req, res);
+  if (!me) return null;
+  const header = await Message.findOne({ where: { chat_id: chatId } });
+  if (!header) {
+    res.status(404).json({ error: 'Conversation not found' });
+    return null;
+  }
+  if (!isChatParty(header, me.email)) {
+    res.status(403).json({ error: 'You are not part of this conversation' });
+    return null;
+  }
+  return { me, header };
+}
 
 class ChatMessageController {
   // Resolve (or create) the conversation header for a user<->worker pair and
   // return its chat_id. Idempotent — safe to call every time a chat opens.
-  // POST /messages/start  body: { user_email, worker_email }
+  // POST /messages/start  body: { user_email, worker_email } — one of them
+  // must be the signed-in user.
   async start(req, res) {
     const { user_email, worker_email } = req.body;
 
@@ -19,6 +40,14 @@ class ChatMessageController {
       return res
         .status(400)
         .json({ error: 'user_email and worker_email are required' });
+    }
+
+    const me = await loadCurrentUser(req, res);
+    if (!me) return null;
+    if (me.email !== user_email && me.email !== worker_email) {
+      return res
+        .status(403)
+        .json({ error: 'You can only open your own conversations' });
     }
 
     // Both parties must be real accounts — otherwise a typo'd email creates a
@@ -69,6 +98,9 @@ class ChatMessageController {
   async index(req, res) {
     const { chatId } = req.params;
 
+    const chat = await loadChatFor(chatId, req, res);
+    if (!chat) return null;
+
     const messages = await ChatMessage.findAll({
       where: { chat_id: chatId },
       order: [['created_at', 'ASC']],
@@ -77,58 +109,61 @@ class ChatMessageController {
     return res.json(messages);
   }
 
-  // POST /messages/:chatId/send  body: { sender_email, recipient_email, body }
+  // POST /messages/:chatId/send  body: { body }. The sender is the signed-in
+  // user and the recipient is the other party on the header; client-supplied
+  // `sender_email` / `recipient_email` can't redirect either.
   async store(req, res) {
     const { chatId } = req.params;
-    const { sender_email, recipient_email, body } = req.body;
+    const { sender_email, body } = req.body;
 
-    if (!sender_email || !body) {
-      return res
-        .status(400)
-        .json({ error: 'sender_email and body are required' });
+    if (!body) {
+      return res.status(400).json({ error: 'body is required' });
     }
 
-    // Load both parties up front: the block check must run BEFORE the message
-    // is persisted, and the push section reuses these below.
-    let recipient = null;
-    let sender = null;
-    if (recipient_email) {
-      [recipient, sender] = await Promise.all([
-        User.findOne({ where: { email: recipient_email } }),
-        User.findOne({ where: { email: sender_email } }),
-      ]);
-      if (isBlockedBetween(sender, recipient)) {
-        return res
-          .status(403)
-          .json({ error: 'This conversation is unavailable' });
-      }
+    const chat = await loadChatFor(chatId, req, res);
+    if (!chat) return null;
+    const { me: sender, header } = chat;
+
+    if (sender_email && sender_email !== sender.email) {
+      return res
+        .status(403)
+        .json({ error: 'You can only send messages as yourself' });
+    }
+
+    // The block check must run BEFORE the message is persisted; the push
+    // section reuses the recipient below.
+    const recipient_email = otherParty(header, sender.email);
+    const recipient = await User.findOne({ where: { email: recipient_email } });
+    if (isBlockedBetween(sender, recipient)) {
+      return res.status(403).json({ error: 'This conversation is unavailable' });
     }
 
     const message = await ChatMessage.create({
       chat_id: chatId,
-      sender_email,
+      sender_email: sender.email,
       recipient_email,
       body,
     });
 
     // Bump the conversation header so the list can sort by recency.
-    const header = await Message.findOne({ where: { chat_id: chatId } });
-    if (header) {
-      await header.update({ messaged_at: String(Date.now()) });
-    }
+    await header.update({ messaged_at: String(Date.now()) });
 
     // Real-time delivery to everyone in this conversation's room.
     io.to(`chat_${chatId}`).emit('chat:message', message);
-    logger.debug({ chatId, sender_email }, 'chat message sent');
+    logger.debug({ chatId, sender_id: sender.id }, 'chat message sent');
 
-    if (recipient_email) {
+    if (recipient) {
       // Wake the recipient's conversation list even when they haven't joined
-      // this room.
-      io.emit(`chat:notify_${recipient_email}`, { chat_id: Number(chatId) });
+      // this room. Only their own sockets (the per-user room joined with a
+      // valid token in server.js) hear it — a broadcast would tell every
+      // connected client who is being messaged.
+      io.to(`user_${recipient.id}`).emit(`chat:notify_${recipient_email}`, {
+        chat_id: Number(chatId),
+      });
 
       // Push notification for the new message (same shape as the task pushes).
-      if (recipient && recipient.notification_token) {
-        const title = (sender && sender.user_name) || sender_email;
+      if (recipient.notification_token) {
+        const title = sender.user_name || sender.email;
         const pushMessage = {
           notification: { title, body },
           data: { channelId: 'godtaskerChannel01', title, message: body },

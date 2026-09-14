@@ -1,23 +1,21 @@
-import User from '../../models/User';
+import { loadCurrentUser } from '../../utils/currentUser';
 // -----------------------------------------------------------------------------
 class UserUnblockController {
+  // Unblock someone from the signed-in user's own list. `unblocker_email` is
+  // the person being unblocked; an `email` in the body is ignored. The target
+  // need not exist any more — a deleted account must still be removable.
   async update(req, res) {
-    const { email, unblocker_email } = req.body;
+    const { unblocker_email: targetEmail } = req.body;
 
-    const user = await User.findOne({
-      where: { email },
-    });
-
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const me = await loadCurrentUser(req, res);
+    if (!me) return null;
 
     // New array (filtered) so Sequelize persists the change.
-    const blocked_list = (user.blocked_list ?? []).filter(
-      e => e !== unblocker_email
-    );
+    const blocked_list = (me.blocked_list ?? []).filter(e => e !== targetEmail);
 
-    await user.update({ blocked_list });
+    await me.update({ blocked_list });
 
-    return res.json(user);
+    return res.json(me);
   }
 }
 export default new UserUnblockController();

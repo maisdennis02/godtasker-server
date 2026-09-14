@@ -91,6 +91,62 @@ test('send: persists, bumps the header, pushes the recipient with the sender nam
   assert.equal(empty.status, 400);
 });
 
+test('outsiders cannot open, read, post into, list or delete someone else\'s conversation', async () => {
+  const carol = await createUser({ user_name: 'carol' });
+  const chat = await start(alice, alice.email, bob.email);
+  const chatId = chat.body.chat_id;
+  await as(alice).post(`/messages/${chatId}/send`).send({ sender_email: alice.email, body: 'private' });
+
+  assert.equal((await start(carol, alice.email, bob.email)).status, 403);
+  assert.equal((await as(carol).get(`/messages/${chatId}/thread`)).status, 403);
+  const spoof = await as(carol)
+    .post(`/messages/${chatId}/send`)
+    .send({ sender_email: alice.email, recipient_email: bob.email, body: 'spoof' });
+  assert.equal(spoof.status, 403);
+  // A party can't speak as the other side either.
+  const impersonate = await as(bob).post(`/messages/${chatId}/send`).send({ sender_email: alice.email, body: 'spoof' });
+  assert.equal(impersonate.status, 403);
+  assert.equal(await ChatMessage.count(), 1);
+
+  const list = await as(carol).get(`/messages?user_email=${alice.email}`);
+  assert.equal(list.status, 200);
+  assert.equal(list.body.length, 0);
+  const lookup = await as(carol).get(`/messages/user?user_email=${alice.email}&worker_email=${bob.email}`);
+  assert.equal(lookup.status, 403);
+
+  const header = await Message.findOne({ where: { chat_id: chatId } });
+  assert.equal((await as(carol).delete(`/messages/${header.id}`)).status, 403);
+  assert.equal((await as(carol).put(`/messages/${chatId}`).send({ messageObject: { message: 'x' } })).status, 403);
+  assert.equal(await Message.count(), 1);
+  assert.equal((await as(alice).get(`/messages/${chatId + 99}/thread`)).status, 404);
+});
+
+test('send: the recipient comes from the conversation and only their own sockets get chat:notify', async () => {
+  const { io } = require('../../src/http');
+  const carol = await createUser({ user_name: 'carol', notification_token: 'carol-token' });
+  const chat = await start(alice, alice.email, bob.email);
+
+  const emitted = [];
+  io.to = room => ({ emit: (event, payload) => emitted.push({ room, event, payload }) });
+  io.emit = (event, payload) => emitted.push({ room: '*', event, payload });
+  let res;
+  try {
+    res = await as(alice)
+      .post(`/messages/${chat.body.chat_id}/send`)
+      .send({ recipient_email: carol.email, body: 'hi' });
+  } finally {
+    delete io.to;
+    delete io.emit;
+  }
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.body.sender_email, alice.email);
+  assert.equal(res.body.recipient_email, bob.email);
+  assert.ok(emitted.some(e => e.room === `user_${bob.id}` && e.event === `chat:notify_${bob.email}`));
+  assert.ok(!emitted.some(e => e.room === '*'));
+  await flush();
+  assert.deepEqual(stubs.fcm.sent.map(m => m.token), ['bob-token']);
+});
+
 test('thread: ordered oldest first', async () => {
   const chat = await start(alice, alice.email, bob.email);
   const chatId = chat.body.chat_id;
