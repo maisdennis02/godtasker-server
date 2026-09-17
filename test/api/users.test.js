@@ -79,6 +79,15 @@ test('PUT /users/notifications/:id: stores token + locale; logout clears the tok
   assert.equal(stored.locale, 'pt-BR');
 });
 
+test('PUT /users/notifications/:id: a locale-only update keeps the stored token', async () => {
+  // Devices that declined the notification permission still report their language.
+  const res = await as(bob).put(`/users/notifications/${bob.id}`).send({ locale: 'en-US' });
+  assert.equal(res.status, 200);
+  const stored = await User.findByPk(bob.id);
+  assert.equal(stored.notification_token, 'bob-token');
+  assert.equal(stored.locale, 'en-US');
+});
+
 test('PUT /users/notifications/:id: cannot set another user\'s push token', async () => {
   const res = await as(alice)
     .put(`/users/notifications/${bob.id}`)
