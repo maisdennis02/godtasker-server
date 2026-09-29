@@ -205,7 +205,7 @@ test('reopen: feedback is capped at 2200 chars', async () => {
   assert.equal(res.body.reopen_feedback.length, 2200);
 });
 
-test('cancel then revive: moves between lists and pushes the status comment to the assignee', async () => {
+test('cancel then revive: moves between lists and pushes the assignee in their language', async () => {
   const task = await createTask(alice, bob, { name: 'x' });
   const cancel = await as(alice)
     .put(`/tasks/${task.id}/cancel`)
@@ -214,7 +214,9 @@ test('cancel then revive: moves between lists and pushes the status comment to t
   assert.ok(cancel.body.canceled_at);
   await flush();
   assert.equal(stubs.fcm.sent[0].token, 'bob-token');
-  assert.equal(stubs.fcm.sent[0].notification.body, 'Não precisa mais');
+  // The client comment is kept on the task but never used as push copy.
+  assert.equal(stubs.fcm.sent[0].notification.body, '"x" foi cancelada');
+  assert.equal(cancel.body.status.comment, 'Não precisa mais');
   assert.equal((await as(bob).get('/tasks/canceled?nameFilter=')).body.length, 1);
   assert.equal((await as(bob).get('/tasks/unfinished?nameFilter=')).body.length, 0);
 
@@ -225,12 +227,12 @@ test('cancel then revive: moves between lists and pushes the status comment to t
   assert.equal((await as(alice).put('/tasks/999999/cancel').send({})).status, 404);
 });
 
-test('cancel without a status comment still works (empty push body, no crash)', async () => {
+test('cancel without a status comment still pushes the localized copy', async () => {
   const task = await createTask(alice, bob);
   const res = await as(alice).put(`/tasks/${task.id}/cancel`).send({});
   assert.equal(res.status, 200);
   await flush();
-  assert.equal(stubs.fcm.sent[0].notification.body, '');
+  assert.equal(stubs.fcm.sent[0].notification.body, '"Test task" foi cancelada');
 });
 
 test('subtask toggle: server recomputes progress and pushes the requester in their language', async () => {

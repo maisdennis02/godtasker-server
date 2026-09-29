@@ -29,6 +29,7 @@ import TaskStatusController from './app/controllers/Task/TaskStatusController';
 import TaskUserCanceledController from './app/controllers/Task/TaskUserCanceledController';
 import TaskUserCountController from './app/controllers/Task/TaskUserCountController';
 import TaskUserFinishedController from './app/controllers/Task/TaskUserFinishedController';
+import TaskSearchController from './app/controllers/Task/TaskSearchController';
 import TaskUserUnfinishedController from './app/controllers/Task/TaskUserUnfinishedController';
 import TaskWorkerNotificationController from './app/controllers/Task/TaskWorkerNotificationController';
 import TaskWorkerSubtaskNotificationController from './app/controllers/Task/TaskWorkerSubtaskNotificationController';
@@ -109,6 +110,7 @@ routes.get('/tasks/finished', TaskWorkerFinishedController.index);
 routes.get('/tasks/unfinished', TaskWorkerUnfinishedController.index);
 routes.get('/tasks/canceled', TaskWorkerCanceledController.index);
 routes.get('/tasks/count', TaskWorkerCountController.index);
+routes.get('/tasks/search', TaskSearchController.index);
 routes.get('/tasks/:id/details', TaskDetailController.index);
 // Sent (I am the requester)
 routes.get('/tasks/user/canceled', TaskUserCanceledController.index);
