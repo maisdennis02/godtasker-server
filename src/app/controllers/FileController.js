@@ -2,8 +2,34 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 
 import File from '../models/File';
 import profileImgUpload from '../middlewares/profile';
+import audioUpload from '../middlewares/audio';
 import s3 from '../../config/s3';
 import logger from '../../lib/logger';
+// Upload to the AWS bucket with `uploader`, persist the File record and return
+// its id so callers can link it (e.g. as a User avatar via PUT /users
+// { avatar_id }, or a chat voice note via file_id).
+function uploadAndRecord(uploader, req, res) {
+  uploader(req, res, async error => {
+    if (error) {
+      return res.status(400).json({ error: error.message || error });
+    }
+    if (req.file === undefined) {
+      return res.status(400).json({ error: 'No file selected' });
+    }
+    const imageName = req.file.key;
+    const imageLocation = req.file.location;
+    const file = await File.create({
+      name: imageName,
+      path: imageLocation,
+    });
+    return res.json({
+      id: file.id,
+      image: imageName,
+      location: imageLocation,
+      url: file.url,
+    });
+  });
+}
 // -----------------------------------------------------------------------------
 class FileController {
   // Public streaming proxy for bucket objects. The bucket has no public-read
@@ -32,31 +58,13 @@ class FileController {
   }
 
   async store(req, res) {
-    // Upload to AWS bucket
-    profileImgUpload(req, res, async error => {
-      if (error) {
-        return res.status(400).json({ error: error.message || error });
-      }
-      // If File not found
-      if (req.file === undefined) {
-        return res.status(400).json({ error: 'No file selected' });
-      }
-      // If Success
-      const imageName = req.file.key;
-      const imageLocation = req.file.location;
-      // Persist the File record and return its id so callers can link it
-      // (e.g. as a User avatar via PUT /users { avatar_id }).
-      const file = await File.create({
-        name: imageName,
-        path: imageLocation,
-      });
-      return res.json({
-        id: file.id,
-        image: imageName,
-        location: imageLocation,
-        url: file.url,
-      });
-    });
+    return uploadAndRecord(profileImgUpload, req, res);
+  }
+
+  // Chat voice notes (POST /files/audio, field `audioFile`). Same File record
+  // as images; the chat message links it via `file_id`.
+  async storeAudio(req, res) {
+    return uploadAndRecord(audioUpload, req, res);
   }
 
   // ---------------------------------------------------------------------------

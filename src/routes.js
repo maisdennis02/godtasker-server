@@ -74,6 +74,7 @@ routes.get('/dashboard/:id', DashboardController.index);
 
 // ─── Files ──────────────────────────────────────────────────────────────────
 routes.post('/files', FileController.store);
+routes.post('/files/audio', FileController.storeAudio);
 routes.get('/files', FileController.index);
 
 // ─── Messages ───────────────────────────────────────────────────────────────

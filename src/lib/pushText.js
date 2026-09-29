@@ -22,6 +22,7 @@ const STRINGS = {
     offeringRequested: ({ name }) => `requested: ${name}`,
     startedFollowing: 'started following you',
     newMessage: 'New message',
+    voiceMessage: '🎤 Voice message',
     approvalOverdue: ({ name }) =>
       `"${name}" has been awaiting your approval for 3 days`,
   },
@@ -41,6 +42,7 @@ const STRINGS = {
     offeringRequested: ({ name }) => `solicitou: ${name}`,
     startedFollowing: 'começou a seguir você',
     newMessage: 'Nova mensagem',
+    voiceMessage: '🎤 Mensagem de voz',
     approvalOverdue: ({ name }) =>
       `"${name}" aguarda sua aprovação há 3 dias`,
   },

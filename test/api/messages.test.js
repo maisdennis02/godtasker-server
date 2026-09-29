@@ -193,3 +193,66 @@ test('delete conversation: removes the header and its thread so a reused chat_id
   const thread = await as(alice).get(`/messages/${chatId}/thread`);
   assert.equal(thread.body.length, 0);
 });
+
+test('start: a conversation with yourself is 400 and legacy self-chats stay out of the list', async () => {
+  const self = await start(alice, alice.email, alice.email);
+  assert.equal(self.status, 400);
+  assert.equal(await Message.count(), 0);
+
+  // Rows created before the guard existed must not show up either.
+  await Message.create({ chat_id: 50, user_email: alice.email, worker_email: alice.email, messaged_at: '1' });
+  await start(alice, alice.email, bob.email);
+  const list = await as(alice).get('/messages');
+  assert.equal(list.status, 200);
+  assert.equal(list.body.length, 1);
+  assert.equal(list.body[0].worker_email, bob.email);
+});
+
+test('send: a voice note links the uploaded file, comes back with it in the thread, pushes a localized label', async () => {
+  const File = require('../../src/app/models/File').default;
+  const audio = await File.create({ name: 'voice-1.m4a', path: 'https://bucket.s3/voice-1.m4a' });
+  const chat = await start(alice, alice.email, bob.email);
+  const chatId = chat.body.chat_id;
+
+  const res = await as(alice)
+    .post(`/messages/${chatId}/send`)
+    .send({ sender_email: alice.email, file_id: audio.id, duration_ms: 4200 });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.body.body, null);
+  assert.equal(res.body.file_id, audio.id);
+  assert.equal(res.body.duration_ms, 4200);
+  assert.match(res.body.audio.url, /voice-1\.m4a$/);
+
+  const thread = await as(bob).get(`/messages/${chatId}/thread`);
+  assert.equal(thread.body.length, 1);
+  assert.match(thread.body[0].audio.url, /voice-1\.m4a$/);
+
+  await flush();
+  assert.equal(stubs.fcm.sent.length, 1);
+  assert.equal(stubs.fcm.sent[0].notification.body, '🎤 Mensagem de voz'); // bob is pt-BR
+
+  // Text messages carry no audio.
+  const text = await as(alice).post(`/messages/${chatId}/send`).send({ body: 'oi' });
+  assert.equal(text.body.audio, null);
+});
+
+test('send: unknown file or bogus duration is 400 and nothing is persisted', async () => {
+  const File = require('../../src/app/models/File').default;
+  const audio = await File.create({ name: 'voice-2.m4a', path: 'https://bucket.s3/voice-2.m4a' });
+  const chatId = (await start(alice, alice.email, bob.email)).body.chat_id;
+  const send = payload => as(alice).post(`/messages/${chatId}/send`).send(payload);
+
+  assert.equal((await send({ file_id: audio.id + 99 })).status, 400);
+  assert.equal((await send({ file_id: audio.id, duration_ms: -1 })).status, 400);
+  assert.equal((await send({ file_id: audio.id, duration_ms: 'long' })).status, 400);
+  assert.equal((await send({ file_id: audio.id, duration_ms: 60 * 60 * 1000 })).status, 400);
+  assert.equal(await ChatMessage.count(), 0);
+});
+
+test('audio upload: non-audio files are rejected before anything reaches S3', async () => {
+  const res = await as(alice)
+    .post('/files/audio')
+    .attach('audioFile', Buffer.from('not audio'), { filename: 'notes.txt', contentType: 'text/plain' });
+  assert.equal(res.status, 400);
+  assert.match(res.body.error, /audio/i);
+});

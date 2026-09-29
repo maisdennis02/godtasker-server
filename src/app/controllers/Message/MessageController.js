@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+import Sequelize, { Op } from 'sequelize';
 import firebaseAdmin from 'firebase-admin';
 
 import ChatMessage from '../../models/ChatMessage';
@@ -67,6 +67,14 @@ class MessageController {
         worker_email: {
           [Op.notIn]: checked_blocked_list,
         },
+        // Self-conversations were never meant to exist; hide any legacy ones.
+        [Op.and]: [
+          Sequelize.where(
+            Sequelize.col('Message.user_email'),
+            Op.ne,
+            Sequelize.col('Message.worker_email')
+          ),
+        ],
       },
       include: [
         {

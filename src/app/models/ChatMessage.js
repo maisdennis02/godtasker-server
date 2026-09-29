@@ -9,6 +9,8 @@ class ChatMessage extends Model {
         recipient_email: Sequelize.STRING,
         body: Sequelize.TEXT,
         read_at: Sequelize.DATE,
+        file_id: Sequelize.INTEGER,
+        duration_ms: Sequelize.INTEGER,
       },
       {
         sequelize,
@@ -16,6 +18,11 @@ class ChatMessage extends Model {
       }
     );
     return this;
+  }
+
+  static associate(models) {
+    // Voice note (an uploaded File) — null for text messages.
+    this.belongsTo(models.File, { foreignKey: 'file_id', as: 'audio' });
   }
 }
 

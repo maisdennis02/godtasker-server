@@ -4,16 +4,24 @@ import path from 'path';
 
 import s3 from '../../config/s3';
 
-const ALLOWED = /jpeg|jpg|png|gif/;
+const IMAGES = /jpeg|jpg|png|gif/;
 
-function imageFileFilter(req, file, cb) {
-  const extOk = ALLOWED.test(path.extname(file.originalname).toLowerCase());
-  const mimeOk = ALLOWED.test(file.mimetype);
-  if (extOk && mimeOk) return cb(null, true);
-  return cb(new Error('Only JPG, PNG, or GIF images are accepted.'));
+// Both the extension and the mimetype must match `allowed`.
+function fileFilterFor(allowed, message) {
+  return (req, file, cb) => {
+    const extOk = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mimeOk = allowed.test(file.mimetype);
+    if (extOk && mimeOk) return cb(null, true);
+    return cb(new Error(message));
+  };
 }
 
-export default function createImageUploader({ field, maxBytes }) {
+export default function createUploader({
+  field,
+  maxBytes,
+  allowed = IMAGES,
+  error = 'Only JPG, PNG, or GIF images are accepted.',
+}) {
   return multer({
     storage: multerS3({
       s3,
@@ -28,6 +36,6 @@ export default function createImageUploader({ field, maxBytes }) {
       },
     }),
     limits: { fileSize: maxBytes },
-    fileFilter: imageFileFilter,
+    fileFilter: fileFilterFor(allowed, error),
   }).single(field);
 }

@@ -3,12 +3,22 @@ import firebaseAdmin from 'firebase-admin';
 
 import Message from '../../models/Message';
 import ChatMessage from '../../models/ChatMessage';
+import File from '../../models/File';
 import User from '../../models/User';
 import { io } from '../../../http';
 import logger from '../../../lib/logger';
+import pushText from '../../../lib/pushText';
 import { isBlockedBetween } from '../../utils/blocks';
 import { isChatParty, otherParty } from '../../utils/chatAccess';
 import { loadCurrentUser } from '../../utils/currentUser';
+
+// Voice-note attachment returned with every message (null for text).
+const withAudio = {
+  include: [{ model: File, as: 'audio', attributes: ['id', 'name', 'path', 'url'] }],
+};
+
+// Longest voice note the clients record; anything longer is a bad client.
+const MAX_VOICE_MS = 5 * 60 * 1000;
 
 // Loads the conversation header for `chatId` and the signed-in user, and
 // rejects anyone who isn't one of its two parties. Sends the response and
@@ -40,6 +50,11 @@ class ChatMessageController {
       return res
         .status(400)
         .json({ error: 'user_email and worker_email are required' });
+    }
+    if (user_email === worker_email) {
+      return res
+        .status(400)
+        .json({ error: 'You cannot start a conversation with yourself' });
     }
 
     const me = await loadCurrentUser(req, res);
@@ -104,20 +119,40 @@ class ChatMessageController {
     const messages = await ChatMessage.findAll({
       where: { chat_id: chatId },
       order: [['created_at', 'ASC']],
+      ...withAudio,
     });
 
     return res.json(messages);
   }
 
-  // POST /messages/:chatId/send  body: { body }. The sender is the signed-in
+  // POST /messages/:chatId/send  body: { body } for text, or
+  // { file_id, duration_ms } for a voice note uploaded via POST /files/audio.
+  // The sender is the signed-in
   // user and the recipient is the other party on the header; client-supplied
   // `sender_email` / `recipient_email` can't redirect either.
   async store(req, res) {
     const { chatId } = req.params;
-    const { sender_email, body } = req.body;
+    const { sender_email, body, file_id, duration_ms } = req.body;
 
-    if (!body) {
-      return res.status(400).json({ error: 'body is required' });
+    if (!body && !file_id) {
+      return res.status(400).json({ error: 'body or file_id is required' });
+    }
+    let audio = null;
+    if (file_id) {
+      audio = await File.findByPk(file_id);
+      if (!audio) {
+        return res.status(400).json({ error: 'Audio file not found' });
+      }
+    }
+    const duration =
+      duration_ms === undefined || duration_ms === null
+        ? null
+        : Number(duration_ms);
+    if (
+      duration !== null &&
+      !(Number.isInteger(duration) && duration >= 0 && duration <= MAX_VOICE_MS)
+    ) {
+      return res.status(400).json({ error: 'Invalid duration_ms' });
     }
 
     const chat = await loadChatFor(chatId, req, res);
@@ -138,12 +173,15 @@ class ChatMessageController {
       return res.status(403).json({ error: 'This conversation is unavailable' });
     }
 
-    const message = await ChatMessage.create({
+    const created = await ChatMessage.create({
       chat_id: chatId,
       sender_email: sender.email,
       recipient_email,
-      body,
+      body: body || null,
+      file_id: audio ? audio.id : null,
+      duration_ms: audio ? duration : null,
     });
+    const message = await ChatMessage.findByPk(created.id, withAudio);
 
     // Bump the conversation header so the list can sort by recency.
     await header.update({ messaged_at: String(Date.now()) });
@@ -164,9 +202,10 @@ class ChatMessageController {
       // Push notification for the new message (same shape as the task pushes).
       if (recipient.notification_token) {
         const title = sender.user_name || sender.email;
+        const text = body || pushText(recipient, 'voiceMessage');
         const pushMessage = {
-          notification: { title, body },
-          data: { channelId: 'godtaskerChannel01', title, message: body },
+          notification: { title, body: text },
+          data: { channelId: 'godtaskerChannel01', title, message: text },
           android: { notification: { sound: 'default' } },
           apns: { payload: { aps: { sound: 'default' } } },
           token: recipient.notification_token,
