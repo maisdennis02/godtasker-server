@@ -15,13 +15,8 @@ class TaskCancelController {
     if (!task) return res;
 
     // Only the requester calls a task off, and only while it's still open.
-    // Offering tasks are a booking with the offering's owner, not the
-    // requester's own task to withdraw.
     if (task.requester_id !== req.userId) {
       return res.status(403).json({ error: 'Only the requester can cancel this task' });
-    }
-    if (task.offering_id) {
-      return res.status(409).json({ error: 'Tasks requested from an offering cannot be canceled' });
     }
     if (task.canceled_at || task.end_date) {
       return res.status(409).json({ error: 'This task is already closed' });

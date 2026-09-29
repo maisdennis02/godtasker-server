@@ -129,8 +129,7 @@ test('request: seat limit counts only active tasks; a canceled seat frees up', a
   assert.equal(full.status, 409);
   assert.match(full.body.error, /full/);
 
-  // Requesters can't cancel offering tasks from the app; free the seat directly.
-  await Task.update({ canceled_at: new Date() }, { where: { id: first.body.id } });
+  await as(requester).put(`/tasks/${first.body.id}/cancel`).send({});
   const again = await as(other).post(`/offerings/${offering.body.id}/request`).send({});
   assert.equal(again.status, 200);
 });

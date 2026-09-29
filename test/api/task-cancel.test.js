@@ -57,10 +57,10 @@ test('PUT /tasks/:id/cancel: finished or already canceled tasks stay as they are
   assert.equal(stubs.fcm.sent.length, 0);
 });
 
-test('PUT /tasks/:id/cancel: offering tasks cannot be canceled', async () => {
+test('PUT /tasks/:id/cancel: the requester can cancel an offering task too', async () => {
   const offering = await Offering.create({ creator_id: bob.id, name: 'Haircut' });
-  const task = await createTask(alice, bob, { offering_id: offering.id });
+  const task = await createTask(alice, bob, { offering_id: offering.id, initiated_at: new Date() });
   const res = await as(alice).put(`/tasks/${task.id}/cancel`).send({});
-  assert.equal(res.status, 409);
-  assert.equal((await Task.findByPk(task.id)).canceled_at, null);
+  assert.equal(res.status, 200);
+  assert.ok((await Task.findByPk(task.id)).canceled_at);
 });
