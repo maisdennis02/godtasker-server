@@ -1,14 +1,23 @@
 import firebaseAdmin from 'firebase-admin';
-import Sequelize from 'sequelize';
+import Sequelize, { Op } from 'sequelize';
 
 import Offering from '../models/Offering';
 import Task from '../models/Task';
 import User from '../models/User';
+import File from '../models/File';
 import { emitTaskChanged } from '../../lib/taskEvents';
 import logger from '../../lib/logger';
 import { isBlockedBetween } from '../utils/blocks';
 import { parseAvailability, availabilityViolation } from '../utils/availability';
 import pushText from '../../lib/pushText';
+import { ONBOARDING_SENDER_EMAIL } from '../../lib/onboarding';
+import { loadCurrentUser } from '../utils/currentUser';
+import { VISIBLE_IN_PROFILE } from '../utils/offeringVisibility';
+
+const MAX_FEED_PAGE = 50;
+
+// Escape LIKE wildcards so "50%" or "a_b" match literally.
+const likeEscape = s => s.replace(/[\\%_]/g, c => `\\${c}`);
 
 const SCHEDULE_KEYS = [
   'start_date',
@@ -136,8 +145,10 @@ class OfferingController {
   async index(req, res) {
     const { creator_id } = req.query;
 
+    // The owner sees everything they offer; visitors only what's shown.
+    const own = Number(creator_id) === req.userId;
     const offerings = await Offering.findAll({
-      where: { creator_id, canceled_at: null },
+      where: { creator_id, canceled_at: null, ...(own ? {} : VISIBLE_IN_PROFILE) },
       include: [
         { model: User, as: 'creator', attributes: ['id', 'user_name', 'email'] },
       ],
@@ -152,6 +163,84 @@ class OfferingController {
       list.map(o => ({ ...o.toJSON(), request_count: counts[o.id] || 0 }));
 
     return res.json({ offerings: withCount(offerings), displays: withCount(displays) });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Discovery feed: what other people offer, people I follow first, then
+  // newest. `q` matches the offering's name or description, or who offers it.
+  async feed(req, res) {
+    const me = await loadCurrentUser(req, res);
+    if (!me) return null;
+
+    const { q, limit, page } = req.query;
+    const term = typeof q === 'string' ? q.trim() : '';
+    const pageSize = Math.min(parseInt(limit, 10) || 20, MAX_FEED_PAGE);
+    const offset = (Math.max(parseInt(page, 10) || 1, 1) - 1) * pageSize;
+
+    const followed = (await me.getFollowing({ attributes: ['id'], joinTableAttributes: [] }))
+      .map(u => u.id)
+      .filter(id => id !== me.id);
+    const pattern = `%${likeEscape(term)}%`;
+
+    const offerings = await Offering.findAll({
+      where: {
+        creator_id: { [Op.ne]: me.id },
+        canceled_at: null,
+        ...VISIBLE_IN_PROFILE,
+        ...(term && {
+          [Op.or]: [
+            { name: { [Op.iLike]: pattern } },
+            { description: { [Op.iLike]: pattern } },
+            { '$creator.user_name$': { [Op.iLike]: pattern } },
+          ],
+        }),
+      },
+      order: [
+        ...(followed.length
+          ? [
+              [
+                Sequelize.literal(
+                  `CASE WHEN "Offering"."creator_id" IN (${followed.join(',')}) THEN 0 ELSE 1 END`
+                ),
+                'ASC',
+              ],
+            ]
+          : []),
+        ['id', 'DESC'],
+      ],
+      limit: pageSize,
+      offset,
+      // Flat join: the include is belongsTo, and the creator filters must see
+      // the joined row, not a LIMITed subquery.
+      subQuery: false,
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'user_name', 'first_name', 'last_name', 'occupation', 'email'],
+          required: true,
+          where: {
+            canceled_at: null,
+            // Blocking hides offerings both ways, like it blocks requests.
+            email: { [Op.notIn]: [ONBOARDING_SENDER_EMAIL, ...(me.blocked_list || [])] },
+            [Op.or]: [
+              { blocked_list: null },
+              { [Op.not]: { blocked_list: { [Op.contains]: [me.email] } } },
+            ],
+          },
+          include: [{ model: File, as: 'avatar', attributes: ['name', 'path', 'url'] }],
+        },
+      ],
+    });
+
+    const counts = await requestCounts(offerings.map(o => o.id));
+    return res.json(
+      offerings.map(o => ({
+        ...o.toJSON(),
+        request_count: counts[o.id] || 0,
+        creator_followed: followed.includes(o.creator_id),
+      }))
+    );
   }
 
   // ---------------------------------------------------------------------------

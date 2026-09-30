@@ -1,12 +1,16 @@
 import { Op } from 'sequelize';
 import User from '../../models/User';
 import File from '../../models/File';
+import { loadCurrentUser } from '../../utils/currentUser';
+import { publicUsers } from '../../utils/publicUser';
 
 // Followers of a user (replaces the old Worker "followed" endpoints).
 class UserFollowersController {
   // List followers of `userName`, filtered by name.
   async index(req, res) {
     const { userName, nameFilter } = req.query;
+    const me = await loadCurrentUser(req, res);
+    if (!me) return null;
     const user = await User.findOne({ where: { user_name: userName } });
     if (!user) return res.json([]);
 
@@ -20,7 +24,7 @@ class UserFollowersController {
       ],
     });
 
-    return res.json(followers);
+    return res.json(publicUsers(followers, me));
   }
 
   // Count of followers of `userName`.

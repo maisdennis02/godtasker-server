@@ -71,12 +71,17 @@ test('index: lists the creator\'s offerings, profile subset, and live request co
   await makeOffering({ name: 'B', display_in_profile: false });
   await as(requester).post(`/offerings/${a.body.id}/request`).send({});
 
-  const res = await as(requester).get(`/offerings?creator_id=${creator.id}`);
+  const res = await as(creator).get(`/offerings?creator_id=${creator.id}`);
   assert.equal(res.status, 200);
   assert.deepEqual(res.body.offerings.map(o => o.name).sort(), ['A', 'B']);
   assert.deepEqual(res.body.displays.map(o => o.name), ['A']);
   assert.equal(res.body.offerings.find(o => o.name === 'A').request_count, 1);
   assert.equal(res.body.offerings.find(o => o.name === 'B').request_count, 0);
+
+  // A visitor only gets what the creator shows on their profile.
+  const visitor = await as(requester).get(`/offerings?creator_id=${creator.id}`);
+  assert.deepEqual(visitor.body.offerings.map(o => o.name), ['A']);
+  assert.deepEqual(visitor.body.displays.map(o => o.name), ['A']);
 });
 
 test('request: spawns a task assigned to the creator with the offering copied, and pushes the creator', async () => {

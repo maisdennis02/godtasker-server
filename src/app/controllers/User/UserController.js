@@ -7,6 +7,8 @@ import Message from '../../models/Message';
 import Task from '../../models/Task';
 import { ONBOARDING_SENDER_EMAIL, sendWelcomeTask } from '../../../lib/onboarding';
 import ChatMessage from '../../models/ChatMessage';
+import { loadCurrentUser } from '../../utils/currentUser';
+import { publicUsers } from '../../utils/publicUser';
 
 class UserController {
   async store(req, res) {
@@ -93,11 +95,14 @@ class UserController {
   }
 
   async index(req, res) {
+    const me = await loadCurrentUser(req, res);
+    if (!me) return null;
     const users = await User.findAll({
       // The onboarding system account isn't a person to follow or chat with.
       where: { canceled_at: null, email: { [Op.ne]: ONBOARDING_SENDER_EMAIL } },
+      include: [{ model: File, as: 'avatar', attributes: ['name', 'path', 'url'] }],
     });
-    return res.json(users);
+    return res.json(publicUsers(users, me));
   }
 
   async delete(req, res) {

@@ -46,6 +46,7 @@ import UserFollowingController from './app/controllers/User/UserFollowingControl
 import UserFollowingCountController from './app/controllers/User/UserFollowingCountController';
 import UserFollowingIndividualController from './app/controllers/User/UserFollowingIndividualController';
 import UserFollowersController from './app/controllers/User/UserFollowersController';
+import UserProfileController from './app/controllers/User/UserProfileController';
 import UserListIndividualController from './app/controllers/User/UserListIndividualController';
 import UserNotificationController from './app/controllers/User/UserNotificationController';
 import UserPointsController from './app/controllers/User/UserPointsController';
@@ -94,6 +95,7 @@ routes.delete('/messages/:id', MessageController.delete);
 // ─── Offerings (profile task offerings; request spawns a task) ───────────────
 routes.post('/offerings', OfferingController.store);
 routes.get('/offerings', OfferingController.index);
+routes.get('/offerings/feed', OfferingController.feed);
 routes.post('/offerings/:id/request', OfferingController.request);
 routes.put('/offerings/:id', OfferingController.update);
 routes.delete('/offerings/:id', OfferingController.delete);
@@ -147,6 +149,7 @@ routes.get(
 );
 routes.get('/users/followers', UserFollowersController.index);
 routes.get('/users/followers/count', UserFollowersController.count);
+routes.get('/users/:id/profile', UserProfileController.index);
 routes.get('/users/:id', UserListIndividualController.index);
 routes.put('/users', UserController.update);
 routes.put('/users/block', UserBlockController.update);

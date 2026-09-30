@@ -6,6 +6,7 @@ import File from '../../models/File';
 import logger from '../../../lib/logger';
 import pushText from '../../../lib/pushText';
 import { loadCurrentUser } from '../../utils/currentUser';
+import { publicUsers } from '../../utils/publicUser';
 
 class UserFollowingController {
   // Follow another user. body: { target_email (whom I follow) }. The follower
@@ -55,6 +56,8 @@ class UserFollowingController {
   // List the users that `contactName` follows, filtered by name.
   async index(req, res) {
     const { contactName, nameFilter } = req.query;
+    const me = await loadCurrentUser(req, res);
+    if (!me) return null;
     const user = await User.findOne({ where: { user_name: contactName } });
     if (!user) return res.json([]);
 
@@ -68,7 +71,7 @@ class UserFollowingController {
       ],
     });
 
-    return res.json(following);
+    return res.json(publicUsers(following, me));
   }
 
   // ---------------------------------------------------------------------------
