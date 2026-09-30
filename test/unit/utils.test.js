@@ -86,12 +86,12 @@ test('fileProxyUrl: encodes the key and strips trailing slashes', () => {
   process.env.APP_URL = 'http://localhost:3333';
 });
 
-test('session: token carries the user id and 7d expiry; session hides the hash', () => {
+test('session: token carries the user id and 30d expiry; session hides the hash', () => {
   const jwt = require('jsonwebtoken');
   const token = signSessionToken(42);
   const decoded = jwt.verify(token, process.env.APP_SECRET);
   assert.equal(decoded.id, 42);
-  assert.ok(decoded.exp - decoded.iat === 7 * 24 * 3600);
+  assert.ok(decoded.exp - decoded.iat === 30 * 24 * 3600);
 
   const session = buildSession({
     id: 42,
