@@ -28,6 +28,8 @@ class Task extends Model {
         due_date: Sequelize.DATE,
         // Fixed length inherited from an offering; when set, due = start + duration.
         duration_minutes: Sequelize.INTEGER,
+        // 1..3 for the welcome-task sequence (src/lib/onboarding.js), else null.
+        onboarding_step: Sequelize.INTEGER,
         end_date: Sequelize.DATE,
         messaged_at: Sequelize.DATE,
         canceled_at: Sequelize.DATE,

@@ -53,15 +53,13 @@ test('pushDate: dd/MM/yyyy for pt, MMM/dd/yyyy for en', () => {
   assert.equal(pushDate({ locale: 'en-US' }, date), 'Sep/13/2026');
 });
 
-test('welcomeCopy: pt / en / bilingual fallback', () => {
-  assert.equal(welcomeCopy('pt-BR').name, 'Bem-vindo ao LalaTask 👋');
-  assert.equal(welcomeCopy('en-US').name, 'Welcome to LalaTask 👋');
-  const both = welcomeCopy('es');
-  assert.match(both.name, /Welcome to LalaTask/);
-  assert.match(both.name, /Bem-vindo ao LalaTask/);
-  assert.equal(both.steps.length, 4);
-  assert.match(both.steps[0], / \/ /);
-  assert.equal(welcomeCopy(null).name, both.name);
-  assert.equal(welcomeCopy('pt').steps.length, 4);
-  assert.equal(welcomeCopy('en').steps.length, 4);
+test('welcomeCopy: three steps, pt or en, en fallback', () => {
+  assert.equal(welcomeCopy('pt-BR', 1).name, 'Sua primeira tarefa em 1 minuto');
+  assert.equal(welcomeCopy('en-US', 2).name, 'Organize something of yours');
+  assert.equal(welcomeCopy('id-ID', 3).name, 'Bring someone in');
+  assert.equal(welcomeCopy(null).name, 'Your first task in 1 minute');
+  assert.equal(welcomeCopy('pt', 3).name, 'Traga alguém');
+  assert.deepEqual([1, 2, 3].map(s => welcomeCopy('pt', s).points), [10, 20, 30]);
+  assert.deepEqual([1, 2, 3].map(s => welcomeCopy('en', s).steps.length), [3, 3, 4]);
+  assert.match(welcomeCopy('en', 1).description, /support@lalatask\.com/);
 });

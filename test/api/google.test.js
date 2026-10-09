@@ -57,7 +57,8 @@ test('creates a new account with a derived unique user_name and the welcome task
   assert.equal(stored.password_hash, null);
   assert.equal(stored.locale, 'pt-BR');
   const welcome = await Task.findOne({ where: { assignee_id: stored.id } });
-  assert.match(welcome.name, /^Bem-vindo/);
+  assert.equal(welcome.name, 'Sua primeira tarefa em 1 minuto');
+  assert.equal(welcome.onboarding_step, 1);
 });
 
 test('returning Google user signs in by google_id even if the email changed', async () => {

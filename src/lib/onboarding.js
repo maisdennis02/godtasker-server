@@ -1,8 +1,10 @@
 import { addDays } from 'date-fns';
+import firebaseAdmin from 'firebase-admin';
 
 import User from '../app/models/User';
 import Task from '../app/models/Task';
 import logger from './logger';
+import pushText from './pushText';
 import { subtaskProgress } from '../app/utils/subtasks';
 import { emitTaskChanged } from './taskEvents';
 
@@ -22,46 +24,93 @@ export async function getOnboardingSender() {
   return sender;
 }
 
-// Language is decided by the locale the client sends at sign-up (device/browser
-// language). Unknown → bilingual, so nobody gets the wrong language only.
-const COPY = {
-  pt: {
-    name: 'Bem-vindo ao LalaTask 👋',
-    description:
-      'Obrigado por testar o LalaTask! Marque os passos abaixo e depois conclua a tarefa. Algo confuso ou quebrado? Escreva para support@lalatask.com.',
-    steps: [
-      'Marque esta caixa',
-      'Toque em Iniciar nesta tarefa',
-      'Abra o Perfil e coloque uma foto',
-      'Envie uma tarefa sua para alguém',
-    ],
-  },
-  en: {
-    name: 'Welcome to LalaTask 👋',
-    description:
-      'Thanks for testing LalaTask! Tick the steps below, then mark the task done. Anything confusing or broken? Email support@lalatask.com.',
-    steps: [
-      'Tick this box',
-      'Tap Start on this task',
-      'Open Profile and set a photo',
-      'Send someone a task of your own',
-    ],
-  },
-};
-COPY.both = {
-  name: `${COPY.en.name} / ${COPY.pt.name}`,
-  description: `${COPY.en.description}\n\n${COPY.pt.description}`,
-  steps: COPY.en.steps.map((s, i) => `${s} / ${COPY.pt.steps[i]}`),
+// Three welcome tasks, sent one at a time: completing step N delivers step N+1
+// (TaskConfirmController), so each new task is a reason to come back. Language
+// follows the locale the client sent at sign-up: pt* → pt, anything else → en,
+// matching the app UI and the push copy.
+export const WELCOME_STEPS = 3;
+
+const SUPPORT = {
+  pt: 'Algo confuso ou quebrado? Escreva para support@lalatask.com.',
+  en: 'Anything confusing or broken? Email support@lalatask.com.',
 };
 
-export function welcomeCopy(locale) {
-  const lang = String(locale || '').toLowerCase();
-  if (lang.startsWith('pt')) return COPY.pt;
-  if (lang.startsWith('en')) return COPY.en;
-  return COPY.both;
+const COPY = {
+  pt: [
+    {
+      name: 'Sua primeira tarefa em 1 minuto',
+      description: `Bem-vindo ao LalaTask! Faça os passos abaixo e ganhe seus primeiros pontos. ${SUPPORT.pt}`,
+      points: 10,
+      steps: [
+        'Toque em Iniciar',
+        'Marque este passo',
+        'Conclua a tarefa e ganhe seus primeiros pontos',
+      ],
+    },
+    {
+      name: 'Organize algo seu',
+      description: `O LalaTask também serve para o seu dia a dia. ${SUPPORT.pt}`,
+      points: 20,
+      steps: [
+        'Crie uma tarefa para você mesmo (ex.: "Comprar pão")',
+        'Adicione passos e um prazo a ela',
+        'Conclua essa tarefa',
+      ],
+    },
+    {
+      name: 'Traga alguém',
+      description: `Tarefas ficam melhores em dupla. ${SUPPORT.pt}`,
+      points: 30,
+      steps: [
+        'Siga uma pessoa',
+        'Mande uma tarefa para ela',
+        'Converse com ela no chat',
+        'Veja o feed de Ofertas e publique uma oferta sua',
+      ],
+    },
+  ],
+  en: [
+    {
+      name: 'Your first task in 1 minute',
+      description: `Welcome to LalaTask! Do the steps below and earn your first points. ${SUPPORT.en}`,
+      points: 10,
+      steps: [
+        'Tap Start',
+        'Tick this step',
+        'Complete the task and earn your first points',
+      ],
+    },
+    {
+      name: 'Organize something of yours',
+      description: `LalaTask works for your own day-to-day too. ${SUPPORT.en}`,
+      points: 20,
+      steps: [
+        'Create a task for yourself (e.g. "Buy bread")',
+        'Give it steps and a due date',
+        'Complete that task',
+      ],
+    },
+    {
+      name: 'Bring someone in',
+      description: `Tasks are better with someone else. ${SUPPORT.en}`,
+      points: 30,
+      steps: [
+        'Follow a person',
+        'Send them a task',
+        'Chat with them',
+        'Browse Offerings and post an offer of your own',
+      ],
+    },
+  ],
+};
+
+export function welcomeCopy(locale, step = 1) {
+  const lang = String(locale || '').toLowerCase().startsWith('pt') ? 'pt' : 'en';
+  const index = Math.min(Math.max(Number(step) || 1, 1), WELCOME_STEPS) - 1;
+  return COPY[lang][index];
 }
 
-export async function sendWelcomeTask(user, locale) {
+export async function sendWelcomeTask(user, locale, step = 1) {
   try {
     const sender = await getOnboardingSender();
     if (!sender) {
@@ -69,7 +118,12 @@ export async function sendWelcomeTask(user, locale) {
       return null;
     }
     if (sender.id === user.id) return null;
-    const copy = welcomeCopy(locale || user.locale);
+    // One task per step, however often this is called.
+    const existing = await Task.findOne({
+      where: { assignee_id: user.id, onboarding_step: step },
+    });
+    if (existing) return null;
+    const copy = welcomeCopy(locale || user.locale, step);
     const sub_task_list = copy.steps.map((description, order) => ({
       description,
       complete: false,
@@ -84,16 +138,30 @@ export async function sendWelcomeTask(user, locale) {
       description: copy.description,
       sub_task_list,
       status_bar: subtaskProgress(sub_task_list),
-      points: 0,
+      points: copy.points,
+      onboarding_step: step,
       confirm_photo: false,
       approval_required: false,
       start_date: new Date(),
       due_date: addDays(new Date(), 3),
     });
-    // No push here: the device only registers its token after the first
-    // login, so the task simply waits on the first screen.
     emitTaskChanged(task, 'created');
-    logger.info({ userId: user.id, taskId: task.id }, '[onboarding] welcome task sent');
+    // Step 1 is created at sign-up, before the device has a push token; later
+    // steps arrive while the person is away, so they get the "New task" push.
+    if (step > 1 && user.notification_token) {
+      const body = `${pushText(user, 'newTask')}: ${copy.name}`;
+      firebaseAdmin
+        .messaging()
+        .send({
+          notification: { title: sender.user_name, body },
+          data: { channelId: 'godtaskerChannel01', title: sender.user_name, message: body },
+          android: { notification: { sound: 'default' } },
+          apns: { payload: { aps: { sound: 'default' } } },
+          token: user.notification_token,
+        })
+        .catch(error => logger.error({ err: error }, 'FCM send failed'));
+    }
+    logger.info({ userId: user.id, taskId: task.id, step }, '[onboarding] welcome task sent');
     return task;
   } catch (err) {
     logger.warn({ err: err.message, userId: user.id }, '[onboarding] welcome task failed');

@@ -8,8 +8,10 @@ const {
   closeDb,
   User,
   Task,
+  stubs,
+  flush,
 } = require('../support/helpers');
-const { ONBOARDING_SENDER_EMAIL } = require('../../src/lib/onboarding');
+const { ONBOARDING_SENDER_EMAIL, sendWelcomeTask } = require('../../src/lib/onboarding');
 
 beforeEach(async () => {
   await resetDb();
@@ -79,22 +81,46 @@ test('POST /users: every new account gets the welcome task in its language', asy
 
   const sender = await User.findOne({ where: { email: ONBOARDING_SENDER_EMAIL } });
   for (const [res, expectName] of [
-    [pt, /^Bem-vindo ao LalaTask/],
-    [en, /^Welcome to LalaTask/],
-    [es, /Welcome to LalaTask .* \/ Bem-vindo ao LalaTask/],
+    [pt, /^Sua primeira tarefa em 1 minuto$/],
+    [en, /^Your first task in 1 minute$/],
+    [es, /^Your first task in 1 minute$/],
   ]) {
-    const task = await Task.findOne({ where: { assignee_id: res.body.user.id } });
-    assert.ok(task, 'welcome task exists');
+    const tasks = await Task.findAll({ where: { assignee_id: res.body.user.id } });
+    assert.equal(tasks.length, 1, 'exactly one welcome task at sign-up');
+    const [task] = tasks;
+    assert.equal(task.onboarding_step, 1);
+    assert.equal(task.points, 10);
     assert.match(task.name, expectName);
     assert.equal(task.requester_id, sender.id);
     assert.equal(task.requester_email, sender.email);
     assert.equal(task.assignee_email, res.body.user.email);
-    assert.equal(task.sub_task_list.length, 4);
+    assert.equal(task.sub_task_list.length, 3);
     assert.equal(task.status_bar, 0);
     assert.equal(task.approval_required, false);
     assert.equal(task.confirm_photo, false);
     assert.ok(task.due_date > new Date());
   }
+});
+
+test('sendWelcomeTask twice for the same step creates one task', async () => {
+  const user = await createUser({ locale: 'en-US' });
+  await sendWelcomeTask(user, user.locale, 2);
+  await sendWelcomeTask(user, user.locale, 2);
+  assert.equal(await Task.count({ where: { assignee_id: user.id, onboarding_step: 2 } }), 1);
+});
+
+test('sendWelcomeTask: step 2 pushes "New task", step 1 does not', async () => {
+  const user = await createUser({ locale: 'pt-BR', notification_token: 'tok-1' });
+  await sendWelcomeTask(user, user.locale, 1);
+  await flush();
+  assert.equal(stubs.fcm.sent.length, 0);
+  const task = await sendWelcomeTask(user, user.locale, 2);
+  await flush();
+  assert.equal(task.points, 20);
+  assert.equal(task.name, 'Organize algo seu');
+  assert.equal(stubs.fcm.sent.length, 1);
+  assert.equal(stubs.fcm.sent[0].token, 'tok-1');
+  assert.equal(stubs.fcm.sent[0].notification.body, 'Nova tarefa: Organize algo seu');
 });
 
 test('POST /users: the welcome task shows up in the new user\'s received list', async () => {
