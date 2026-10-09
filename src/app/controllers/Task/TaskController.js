@@ -11,6 +11,7 @@ import { subtaskProgress } from '../../utils/subtasks';
 import { toDateOrNull } from '../../utils/dates';
 import { isBlockedBetween } from '../../utils/blocks';
 import { loadTaskFor } from '../../utils/taskAccess';
+import { clampTaskPoints } from '../../utils/points';
 import { emitTaskChanged } from '../../../lib/taskEvents';
 
 class TaskController {
@@ -68,7 +69,7 @@ class TaskController {
       task_attributes,
       status,
       status_bar: subtaskProgress(sub_task_list),
-      points,
+      points: clampTaskPoints(points),
       confirm_photo,
       approval_required: !!approval_required,
       start_date: startsAt,

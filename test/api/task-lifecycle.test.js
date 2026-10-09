@@ -307,3 +307,20 @@ test('tasks without points credit nothing', async () => {
   assert.equal((await bob.reload()).points, 0);
   assert.equal((await Task.findByPk(task.id)).points_awarded_at, null);
 });
+
+test('task points are capped at 100 and never negative when the task is created', async () => {
+  const big = await as(alice).post('/tasks').send({ assignee_email: bob.email, name: 'Big', points: 1000000 });
+  assert.equal(big.status, 200, JSON.stringify(big.body));
+  assert.equal(big.body.points, 100);
+  const negative = await as(alice).post('/tasks').send({ assignee_email: bob.email, name: 'Neg', points: -5 });
+  assert.equal(negative.body.points, 0);
+  const junk = await as(alice).post('/tasks').send({ assignee_email: bob.email, name: 'Junk', points: 'lots' });
+  assert.equal(junk.body.points, 0);
+});
+
+test('a task you sent yourself earns no points', async () => {
+  const task = await createTask(bob, bob, { points: 50, sub_task_list: done });
+  const res = await as(bob).put(`/tasks/confirm/${task.id}`).send({});
+  assert.equal(res.status, 200);
+  assert.equal((await bob.reload()).points, 0);
+});

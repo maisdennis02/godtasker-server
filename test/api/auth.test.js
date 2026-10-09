@@ -102,6 +102,12 @@ test('POST /users: every new account gets the welcome task in its language', asy
   }
 });
 
+test('POST /users: sign-up ignores client-sent points and starts at 0', async () => {
+  const res = await signup({ user_name: 'rich', email: 'rich@test.local', password: 'password123', points: 999 });
+  assert.equal(res.status, 200);
+  assert.equal((await User.findByPk(res.body.user.id)).points, 0);
+});
+
 test('sendWelcomeTask twice for the same step creates one task', async () => {
   const user = await createUser({ locale: 'en-US' });
   await sendWelcomeTask(user, user.locale, 2);

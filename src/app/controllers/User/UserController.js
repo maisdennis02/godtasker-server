@@ -26,7 +26,7 @@ class UserController {
       return res.status(400).json({ error: 'Create User fail: Schema error' });
     }
 
-    const { subscriber, user_name, hint, email, password, points, bio, locale } =
+    const { subscriber, user_name, hint, email, password, bio, locale } =
       req.body;
 
     const userExists = await User.findOne({ where: { email } });
@@ -43,7 +43,8 @@ class UserController {
       hint,
       email,
       password,
-      points,
+      // Everyone starts at 0; points only come from finishing tasks.
+      points: 0,
       bio,
       // Device/browser language, so the welcome task (and pushes) come out in
       // the right language from the first minute.
