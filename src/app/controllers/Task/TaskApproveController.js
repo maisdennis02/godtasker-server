@@ -4,6 +4,7 @@ import User from '../../models/User';
 import logger from '../../../lib/logger';
 import pushText from '../../../lib/pushText';
 import { emitTaskChanged } from '../../../lib/taskEvents';
+import { awardTaskPoints } from '../../utils/points';
 
 // The requester signs off on an approval-required task: stamps end_date, which
 // is the single "completed" signal everywhere else.
@@ -32,6 +33,7 @@ class TaskApproveController {
     }
 
     task = await task.update({ end_date: new Date() });
+    await awardTaskPoints(task);
 
     emitTaskChanged(task, 'approved');
 

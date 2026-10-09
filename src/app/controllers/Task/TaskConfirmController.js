@@ -5,6 +5,7 @@ import logger from '../../../lib/logger';
 import { allSubtasksComplete } from '../../utils/subtasks';
 import pushText from '../../../lib/pushText';
 import { emitTaskChanged } from '../../../lib/taskEvents';
+import { awardTaskPoints } from '../../utils/points';
 
 class TaskConfirmController {
   async update(req, res) {
@@ -53,6 +54,7 @@ class TaskConfirmController {
         signature_id,
         score,
       });
+      await awardTaskPoints(task);
     }
 
     emitTaskChanged(task, 'completed');

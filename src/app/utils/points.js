@@ -1,0 +1,17 @@
+import Task from '../models/Task';
+import User from '../models/User';
+
+// Credit a finished task's points to its assignee, exactly once. The stamp is
+// a conditional UPDATE, so of two concurrent calls only one gets the row back
+// and pays. Returns true only for the call that credited — callers use that to
+// run other once-per-completion work (the next welcome task).
+export async function awardTaskPoints(task) {
+  if (!(task.points > 0)) return false;
+  const [stamped] = await Task.update(
+    { points_awarded_at: new Date() },
+    { where: { id: task.id, points_awarded_at: null } }
+  );
+  if (stamped !== 1) return false;
+  await User.increment('points', { by: task.points, where: { id: task.assignee_id } });
+  return true;
+}

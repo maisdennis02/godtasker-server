@@ -269,3 +269,41 @@ test('a push provider failure never fails the request', async () => {
   assert.equal(res.status, 200);
   await flush();
 });
+
+// ─── Points ─────────────────────────────────────────────────────────────────
+// A task's points go to the assignee once, when the task ends.
+
+test('confirm credits the task points to the assignee', async () => {
+  const task = await createTask(alice, bob, { points: 15, sub_task_list: done });
+  const res = await as(bob).put(`/tasks/confirm/${task.id}`).send({});
+  assert.equal(res.status, 200);
+  assert.equal((await bob.reload()).points, 15);
+  assert.ok((await Task.findByPk(task.id)).points_awarded_at);
+});
+
+test('points are credited once across reopen and re-confirm', async () => {
+  const task = await createTask(alice, bob, { points: 15, sub_task_list: done });
+  await as(bob).put(`/tasks/confirm/${task.id}`).send({});
+  const reopen = await as(alice).put(`/tasks/${task.id}/reopen`).send({ feedback: 'again' });
+  assert.equal(reopen.status, 200);
+  await Task.update({ sub_task_list: done }, { where: { id: task.id } });
+  const again = await as(bob).put(`/tasks/confirm/${task.id}`).send({});
+  assert.equal(again.status, 200);
+  assert.equal((await bob.reload()).points, 15);
+});
+
+test('approval path credits on approve, not on request', async () => {
+  const task = await createTask(alice, bob, { points: 15, sub_task_list: done, approval_required: true });
+  await as(bob).put(`/tasks/confirm/${task.id}`).send({});
+  assert.equal((await bob.reload()).points, 0);
+  const res = await as(alice).put(`/tasks/${task.id}/approve`).send({});
+  assert.equal(res.status, 200);
+  assert.equal((await bob.reload()).points, 15);
+});
+
+test('tasks without points credit nothing', async () => {
+  const task = await createTask(alice, bob, { points: null, sub_task_list: done });
+  await as(bob).put(`/tasks/confirm/${task.id}`).send({});
+  assert.equal((await bob.reload()).points, 0);
+  assert.equal((await Task.findByPk(task.id)).points_awarded_at, null);
+});

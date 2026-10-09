@@ -31,6 +31,7 @@ class Task extends Model {
         // 1..3 for the welcome-task sequence (src/lib/onboarding.js), else null.
         onboarding_step: Sequelize.INTEGER,
         end_date: Sequelize.DATE,
+        points_awarded_at: Sequelize.DATE,
         messaged_at: Sequelize.DATE,
         canceled_at: Sequelize.DATE,
         requester_email: Sequelize.STRING,
