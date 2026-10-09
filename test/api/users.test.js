@@ -238,3 +238,9 @@ test('DELETE /users/:id: only the owner, and it wipes tasks, chats and follows i
   const [follows] = await User.sequelize.query('SELECT * FROM user_followers');
   assert.equal(follows.length, 0);
 });
+
+test('PUT /users/points/:id is gone — points only come from finishing tasks', async () => {
+  const res = await as(alice).put(`/users/points/${bob.id}`).send({ points: 999 });
+  assert.equal(res.status, 404);
+  assert.equal((await bob.reload()).points, 0);
+});

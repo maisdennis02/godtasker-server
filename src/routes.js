@@ -49,7 +49,6 @@ import UserFollowersController from './app/controllers/User/UserFollowersControl
 import UserProfileController from './app/controllers/User/UserProfileController';
 import UserListIndividualController from './app/controllers/User/UserListIndividualController';
 import UserNotificationController from './app/controllers/User/UserNotificationController';
-import UserPointsController from './app/controllers/User/UserPointsController';
 import UserUpdateNoPhotoController from './app/controllers/User/UserUpdateNoPhotoController';
 
 const routes = new Router();
@@ -158,7 +157,6 @@ routes.put('/users/unblock', UserUnblockController.update);
 routes.put('/users/following', UserFollowingController.update);
 routes.put('/users/no-photo', UserUpdateNoPhotoController.update);
 routes.put('/users/notifications/:id', UserNotificationController.update);
-routes.put('/users/points/:id', UserPointsController.update);
 routes.delete('/users/:id', UserController.delete);
 
 export default routes;
