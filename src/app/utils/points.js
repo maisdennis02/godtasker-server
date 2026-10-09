@@ -1,3 +1,4 @@
+import Sequelize from 'sequelize';
 import Task from '../models/Task';
 import User from '../models/User';
 
@@ -12,6 +13,10 @@ export async function awardTaskPoints(task) {
     { where: { id: task.id, points_awarded_at: null } }
   );
   if (stamped !== 1) return false;
-  await User.increment('points', { by: task.points, where: { id: task.assignee_id } });
+  // Password sign-ups start with points NULL, and NULL + n is NULL in SQL.
+  await User.update(
+    { points: Sequelize.literal(`COALESCE(points, 0) + ${Number(task.points)}`) },
+    { where: { id: task.assignee_id } }
+  );
   return true;
 }

@@ -6,6 +6,7 @@ import { allSubtasksComplete } from '../../utils/subtasks';
 import pushText from '../../../lib/pushText';
 import { emitTaskChanged } from '../../../lib/taskEvents';
 import { awardTaskPoints } from '../../utils/points';
+import { sendWelcomeTask, WELCOME_STEPS } from '../../../lib/onboarding';
 
 class TaskConfirmController {
   async update(req, res) {
@@ -20,6 +21,10 @@ class TaskConfirmController {
       return res
         .status(403)
         .json({ error: 'Only the assignee can complete this task.' });
+    }
+
+    if (task.canceled_at) {
+      return res.status(400).json({ error: 'Task is canceled.' });
     }
 
     // A task can only be ended once every subtask is done. Tasks without
@@ -54,7 +59,15 @@ class TaskConfirmController {
         signature_id,
         score,
       });
-      await awardTaskPoints(task);
+      // Gated on the award so a double tap can't deliver the next step twice.
+      const awarded = await awardTaskPoints(task);
+      const step = task.onboarding_step;
+      if (awarded && step >= 1 && step < WELCOME_STEPS) {
+        const assignee = await User.findByPk(task.assignee_id);
+        // Awaited: best-effort (never throws), and the next task is in place
+        // by the time the app refetches its list.
+        if (assignee) await sendWelcomeTask(assignee, assignee.locale, step + 1);
+      }
     }
 
     emitTaskChanged(task, 'completed');
