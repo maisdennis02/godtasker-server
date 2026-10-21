@@ -122,11 +122,11 @@ test('sendWelcomeTask: step 2 pushes "New task", step 1 does not', async () => {
   assert.equal(stubs.fcm.sent.length, 0);
   const task = await sendWelcomeTask(user, user.locale, 2);
   await flush();
-  assert.equal(task.points, 20);
-  assert.equal(task.name, 'Organize algo seu');
+  assert.equal(task.points, 30);
+  assert.equal(task.name, 'Desafio de 3 dias: uma foto do seu dia');
   assert.equal(stubs.fcm.sent.length, 1);
   assert.equal(stubs.fcm.sent[0].token, 'tok-1');
-  assert.equal(stubs.fcm.sent[0].notification.body, 'Nova tarefa: Organize algo seu');
+  assert.equal(stubs.fcm.sent[0].notification.body, 'Nova tarefa: Desafio de 3 dias: uma foto do seu dia');
 });
 
 test('POST /users: the welcome task shows up in the new user\'s received list', async () => {

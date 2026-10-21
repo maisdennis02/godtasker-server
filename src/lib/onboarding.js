@@ -24,11 +24,17 @@ export async function getOnboardingSender() {
   return sender;
 }
 
-// Three welcome tasks, sent one at a time: completing step N delivers step N+1
+// Four welcome tasks, sent one at a time: completing step N delivers step N+1
 // (TaskConfirmController), so each new task is a reason to come back. Language
 // follows the locale the client sent at sign-up: pt* → pt, anything else → en,
 // matching the app UI and the push copy.
-export const WELCOME_STEPS = 3;
+//
+// 1. a one-minute win, 2. a three-day photo challenge (first contact with the
+// proof-photo flow, one step per day), 3. a checklist worth using for real,
+// 4. the delegation loop with another person. Steps 2 and 3 carry their own
+// window; everything else defaults to confirmPhoto false / dueDays 3.
+export const WELCOME_STEPS = 4;
+const DEFAULT_DUE_DAYS = 3;
 
 const SUPPORT = {
   pt: 'Algo confuso ou quebrado? Escreva para support@lalatask.com.',
@@ -48,19 +54,35 @@ const COPY = {
       ],
     },
     {
-      name: 'Organize algo seu',
-      description: `O LalaTask também serve para o seu dia a dia. ${SUPPORT.pt}`,
-      points: 20,
+      name: 'Desafio de 3 dias: uma foto do seu dia',
+      description: `Uma foto por dia, três dias seguidos. Marque um passo por dia e conclua com uma foto de prova. ${SUPPORT.pt}`,
+      points: 30,
+      confirmPhoto: true,
+      dueDays: 3,
       steps: [
-        'Crie uma tarefa para você mesmo (ex.: "Comprar pão")',
-        'Adicione passos e um prazo a ela',
-        'Conclua essa tarefa',
+        'Dia 1: uma foto do seu café ou da vista da janela',
+        'Dia 2: uma foto de algo que você terminou hoje',
+        'Dia 3: o canto mais bagunçado da casa, antes e depois de 10 min de arrumação',
+      ],
+    },
+    {
+      name: 'Reset de domingo (30 min)',
+      description: `Um checklist pronto para usar de verdade. Faça uma vez, depois deixe do seu jeito. ${SUPPORT.pt}`,
+      points: 20,
+      dueDays: 7,
+      steps: [
+        'Limpe sua mesa',
+        'Anote as 3 coisas que importam nesta semana',
+        'Separe a roupa de amanhã',
+        '10 minutos zerando mensagens e e-mails',
+        'Leve o lixo para fora',
+        'Crie sua própria versão desta lista para a semana que vem',
       ],
     },
     {
       name: 'Traga alguém',
       description: `Tarefas ficam melhores em dupla. ${SUPPORT.pt}`,
-      points: 30,
+      points: 40,
       steps: [
         'Siga uma pessoa',
         'Mande uma tarefa para ela',
@@ -81,19 +103,35 @@ const COPY = {
       ],
     },
     {
-      name: 'Organize something of yours',
-      description: `LalaTask works for your own day-to-day too. ${SUPPORT.en}`,
-      points: 20,
+      name: '3-day challenge: a photo of your day',
+      description: `One photo a day, three days in a row. Tick a step each day and finish with a photo as proof. ${SUPPORT.en}`,
+      points: 30,
+      confirmPhoto: true,
+      dueDays: 3,
       steps: [
-        'Create a task for yourself (e.g. "Buy bread")',
-        'Give it steps and a due date',
-        'Complete that task',
+        'Day 1: a photo of your coffee or the view from your window',
+        'Day 2: a photo of something you finished today',
+        'Day 3: the messiest spot at home, before and after 10 minutes of tidying',
+      ],
+    },
+    {
+      name: 'Sunday reset (30 min)',
+      description: `A ready-made checklist you can actually use. Do it once, then make it yours. ${SUPPORT.en}`,
+      points: 20,
+      dueDays: 7,
+      steps: [
+        'Clear your desk or table',
+        'Write down the 3 things that matter this week',
+        "Lay out tomorrow's clothes",
+        '10 minutes clearing messages and inbox',
+        'Take out the trash',
+        'Create your own version of this list for next week',
       ],
     },
     {
       name: 'Bring someone in',
       description: `Tasks are better with someone else. ${SUPPORT.en}`,
-      points: 30,
+      points: 40,
       steps: [
         'Follow a person',
         'Send them a task',
@@ -107,7 +145,8 @@ const COPY = {
 export function welcomeCopy(locale, step = 1) {
   const lang = String(locale || '').toLowerCase().startsWith('pt') ? 'pt' : 'en';
   const index = Math.min(Math.max(Number(step) || 1, 1), WELCOME_STEPS) - 1;
-  return COPY[lang][index];
+  const copy = COPY[lang][index];
+  return { confirmPhoto: false, dueDays: DEFAULT_DUE_DAYS, ...copy };
 }
 
 export async function sendWelcomeTask(user, locale, step = 1) {
@@ -140,10 +179,10 @@ export async function sendWelcomeTask(user, locale, step = 1) {
       status_bar: subtaskProgress(sub_task_list),
       points: copy.points,
       onboarding_step: step,
-      confirm_photo: false,
+      confirm_photo: copy.confirmPhoto,
       approval_required: false,
       start_date: new Date(),
-      due_date: addDays(new Date(), 3),
+      due_date: addDays(new Date(), copy.dueDays),
     });
     emitTaskChanged(task, 'created');
     // Step 1 is created at sign-up, before the device has a push token; later

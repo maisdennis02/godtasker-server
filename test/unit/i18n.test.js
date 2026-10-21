@@ -53,13 +53,24 @@ test('pushDate: dd/MM/yyyy for pt, MMM/dd/yyyy for en', () => {
   assert.equal(pushDate({ locale: 'en-US' }, date), 'Sep/13/2026');
 });
 
-test('welcomeCopy: three steps, pt or en, en fallback', () => {
+test('welcomeCopy: four steps, pt or en, en fallback', () => {
   assert.equal(welcomeCopy('pt-BR', 1).name, 'Sua primeira tarefa em 1 minuto');
-  assert.equal(welcomeCopy('en-US', 2).name, 'Organize something of yours');
-  assert.equal(welcomeCopy('id-ID', 3).name, 'Bring someone in');
+  assert.equal(welcomeCopy('en-US', 2).name, '3-day challenge: a photo of your day');
+  assert.equal(welcomeCopy('en-US', 3).name, 'Sunday reset (30 min)');
+  assert.equal(welcomeCopy('id-ID', 4).name, 'Bring someone in');
   assert.equal(welcomeCopy(null).name, 'Your first task in 1 minute');
-  assert.equal(welcomeCopy('pt', 3).name, 'Traga alguém');
-  assert.deepEqual([1, 2, 3].map(s => welcomeCopy('pt', s).points), [10, 20, 30]);
-  assert.deepEqual([1, 2, 3].map(s => welcomeCopy('en', s).steps.length), [3, 3, 4]);
+  assert.equal(welcomeCopy('pt', 2).name, 'Desafio de 3 dias: uma foto do seu dia');
+  assert.equal(welcomeCopy('pt', 3).name, 'Reset de domingo (30 min)');
+  assert.equal(welcomeCopy('pt', 4).name, 'Traga alguém');
+  assert.deepEqual([1, 2, 3, 4].map(s => welcomeCopy('pt', s).points), [10, 30, 20, 40]);
+  assert.deepEqual([1, 2, 3, 4].map(s => welcomeCopy('en', s).steps.length), [3, 3, 6, 4]);
   assert.match(welcomeCopy('en', 1).description, /support@lalatask\.com/);
+});
+
+test('welcomeCopy: the photo challenge asks for proof and has a 3-day window', () => {
+  assert.deepEqual([1, 2, 3, 4].map(s => welcomeCopy('en', s).confirmPhoto), [false, true, false, false]);
+  assert.deepEqual([1, 2, 3, 4].map(s => welcomeCopy('en', s).dueDays), [3, 3, 7, 3]);
+  for (const lang of ['pt', 'en']) {
+    assert.ok(welcomeCopy(lang, 2).steps.every((step, i) => new RegExp(`^(Day|Dia) ${i + 1}:`).test(step)), `${lang} one step per day`);
+  }
 });
