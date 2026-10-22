@@ -61,6 +61,18 @@ test('creates a new account with a derived unique user_name and the welcome task
   assert.equal(welcome.onboarding_step, 1);
 });
 
+test('a Google sign-in records the client platform and the time', async () => {
+  stubs.setGooglePayload(payload());
+  const res = await anon()
+    .post('/sessions/google')
+    .set('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36')
+    .send({ idToken: 'x' });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  const stored = await User.findByPk(res.body.user.id);
+  assert.equal(stored.last_client, 'web');
+  assert.ok(stored.last_seen_at, 'last_seen_at stamped');
+});
+
 test('returning Google user signs in by google_id even if the email changed', async () => {
   stubs.setGooglePayload(payload());
   const first = await google({ idToken: 'x' });

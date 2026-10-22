@@ -163,6 +163,21 @@ test('POST /sessions: valid credentials return the session shape', async () => {
   assert.equal(me.status, 200);
 });
 
+test('POST /sessions: a login records which client it came from and when', async () => {
+  const user = await createUser({ email: 'login@test.local', password: 'password123', user_name: 'login' });
+  const before = Date.now();
+  const res = await anon()
+    .post('/sessions')
+    .set('User-Agent', 'okhttp/4.12.0')
+    .send({ email: 'login@test.local', password: 'password123' });
+  assert.equal(res.status, 200);
+  const stored = await User.findByPk(user.id);
+  assert.equal(stored.last_client, 'android');
+  assert.ok(new Date(stored.last_seen_at).getTime() >= before - 1000, 'last_seen_at stamped now');
+  // Never exposed to other clients.
+  assert.equal(res.body.user.last_client, undefined);
+});
+
 test('POST /sessions: wrong password, unknown email, and Google-only account all look identical', async () => {
   await createUser({ email: 'login@test.local', password: 'password123' });
   await User.create({ email: 'google@test.local', user_name: 'g', google_id: 'g-1', points: 0 });

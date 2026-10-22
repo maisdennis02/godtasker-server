@@ -25,6 +25,7 @@ const { Client } = require('pg');
 
   const users = await q(`
     select u.id, u.user_name, u.first_name, u.locale, u.google_id is not null as google,
+           u.last_client, u.last_seen_at,
            u.notification_token is not null as push, u.created_at as created,
            (select count(*) from tasks t where t.requester_id=u.id and t.requester_id<>t.assignee_id) as sent,
            (select count(*) from tasks t where t.assignee_id=u.id and t.requester_id<>t.assignee_id) as received,
@@ -37,9 +38,9 @@ const { Client } = require('pg');
            (select count(*) from offerings o where o.creator_id=u.id) as offerings
     from users u where u.canceled_at is null order by u.id`);
 
-  console.log('id | user_name | first | loc | google | push | created | sent | recv | started | finished | self | lastTask | chat | lastChat | offers');
+  console.log('id | user_name | first | loc | google | push | client | seen | created | sent | recv | started | finished | self | lastTask | chat | lastChat | offers');
   for (const u of users) {
-    console.log([u.id, u.user_name, u.first_name, u.locale || '-', u.google ? 'G' : '-', u.push ? 'P' : '-', d(u.created),
+    console.log([u.id, u.user_name, u.first_name, u.locale || '-', u.google ? 'G' : '-', u.push ? 'P' : '-', u.last_client || '-', d(u.last_seen_at), d(u.created),
       u.sent, u.received, u.started, u.finished, u.self_tasks, d(u.last_task_touch), u.chat_sent, d(u.last_chat), u.offerings].join(' | '));
   }
 

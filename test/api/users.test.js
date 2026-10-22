@@ -88,6 +88,19 @@ test('PUT /users/notifications/:id: a locale-only update keeps the stored token'
   assert.equal(stored.locale, 'en-US');
 });
 
+test('PUT /users/notifications/:id: every app launch refreshes last_client and last_seen_at', async () => {
+  await User.update({ last_client: 'web', last_seen_at: new Date('2026-01-01') }, { where: { id: bob.id } });
+  const res = await as(bob)
+    .put(`/users/notifications/${bob.id}`)
+    .set('User-Agent', 'okhttp/4.12.0')
+    .send({ locale: 'en-GB' });
+  assert.equal(res.status, 200);
+  const stored = await User.findByPk(bob.id);
+  assert.equal(stored.last_client, 'android');
+  assert.ok(new Date(stored.last_seen_at) > new Date('2026-01-02'), 'last_seen_at moved forward');
+  assert.equal(res.body.user.last_client, undefined);
+});
+
 test('PUT /users/notifications/:id: cannot set another user\'s push token', async () => {
   const res = await as(alice)
     .put(`/users/notifications/${bob.id}`)

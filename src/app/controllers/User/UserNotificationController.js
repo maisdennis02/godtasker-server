@@ -1,5 +1,6 @@
 import User from '../../models/User';
 import logger from '../../../lib/logger';
+import { clientPlatform } from '../../../lib/clientPlatform';
 
 class UserNotificationController {
   async update(req, res) {
@@ -20,6 +21,9 @@ class UserNotificationController {
       const updatedUser = user
         ? await user.update({
             notification_token,
+            // The app calls this on every launch, so it doubles as "last seen".
+            last_client: clientPlatform(req.get('user-agent')),
+            last_seen_at: new Date(),
             // Only overwrite the locale when the client sent one (logout clears
             // the token alone).
             ...(typeof locale === 'string' ? { locale: locale.slice(0, 16) } : {}),

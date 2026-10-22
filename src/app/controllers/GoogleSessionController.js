@@ -8,6 +8,7 @@ import logger from '../../lib/logger';
 import { buildSession } from '../utils/session';
 import { importGoogleAvatar } from '../../lib/googleAvatar';
 import { sendWelcomeTask } from '../../lib/onboarding';
+import { touchClient } from '../../lib/clientPlatform';
 
 const oauthClient = new OAuth2Client();
 
@@ -108,6 +109,7 @@ class GoogleSessionController {
       }
     }
 
+    await touchClient(user, req);
     return res.json(buildSession(user));
   }
 }

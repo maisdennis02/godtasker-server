@@ -3,6 +3,7 @@ import * as Yup from 'yup';
 import User from '../models/User';
 import File from '../models/File';
 import { buildSession } from '../utils/session';
+import { touchClient } from '../../lib/clientPlatform';
 
 class SessionController {
   async store(req, res) {
@@ -41,6 +42,7 @@ class SessionController {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    await touchClient(user, req);
     return res.json(buildSession(user));
   }
 }
