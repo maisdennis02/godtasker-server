@@ -5,6 +5,7 @@ import profileImgUpload from '../middlewares/profile';
 import audioUpload from '../middlewares/audio';
 import s3 from '../../config/s3';
 import logger from '../../lib/logger';
+import { proxyContentType } from '../utils/contentType';
 // Upload to the AWS bucket with `uploader`, persist the File record and return
 // its id so callers can link it (e.g. as a User avatar via PUT /users
 // { avatar_id }, or a chat voice note via file_id).
@@ -43,7 +44,8 @@ class FileController {
       const obj = await s3.send(
         new GetObjectCommand({ Bucket: process.env.AWS_BUCKET, Key: key })
       );
-      if (obj.ContentType) res.set('Content-Type', obj.ContentType);
+      const contentType = proxyContentType(key, obj.ContentType);
+      if (contentType) res.set('Content-Type', contentType);
       // Immutable content (key includes a timestamp) — let clients/CDNs cache it.
       res.set('Cache-Control', 'public, max-age=86400, immutable');
       // helmet defaults every response to CORP "same-origin", which makes browsers
