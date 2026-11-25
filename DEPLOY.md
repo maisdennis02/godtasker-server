@@ -28,6 +28,10 @@ passed in via `DATABASE_URL`.
      Console → APIs & Services → Credentials, same project as Firebase
      (`godtasker-development`). Blank = `POST /sessions/google` answers 503; password
      login is unaffected.
+   - `APPLE_CLIENT_IDS` — comma-separated identifiers accepted as the audience of a
+     "Sign in with Apple" identity token: the iOS bundle id (`com.godtasker.app`).
+     No Apple key or secret is needed to verify tokens. Blank = `POST /sessions/apple`
+     answers 503; the other logins are unaffected.
    - `NODE_ENV`, `APP_URL`, `AWS_REGION`, `AWS_BUCKET`, `APP_SECRET` are set by the blueprint.
 5. Deploy. First boot runs `npm run db:migrate` (against Neon) then starts the server.
 6. Verify: `curl https://<your-service>.onrender.com/health` → `{"status":"ok"}`.

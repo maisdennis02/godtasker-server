@@ -6,27 +6,12 @@ import User from '../models/User';
 import File from '../models/File';
 import logger from '../../lib/logger';
 import { buildSession } from '../utils/session';
+import { uniqueUserName } from '../utils/userName';
 import { importGoogleAvatar } from '../../lib/googleAvatar';
 import { sendWelcomeTask } from '../../lib/onboarding';
 import { touchClient } from '../../lib/clientPlatform';
 
 const oauthClient = new OAuth2Client();
-
-// user_name is what other people see; derive a sane default from the Google
-// profile and make it unique with a numeric suffix if it's taken.
-async function uniqueUserName(seed) {
-  const base =
-    String(seed || 'user')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '')
-      .slice(0, 24) || 'user';
-  let candidate = base;
-  for (let i = 0; await User.findOne({ where: { user_name: candidate } }); i += 1) {
-    candidate = `${base}${Math.floor(Math.random() * 9000) + 1000}`;
-    if (i > 20) break; // practically unreachable; keep a hard stop anyway
-  }
-  return candidate;
-}
 
 class GoogleSessionController {
   // POST /sessions/google  { idToken }

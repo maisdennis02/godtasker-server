@@ -36,6 +36,10 @@ services:
       # audience: the Web client id [+ iOS client id]). Blank = endpoint returns 503.
       - key: GOOGLE_CLIENT_IDS
         sync: false
+      # ── Sign in with Apple (comma-separated identifiers allowed as identity-token
+      # audience: the iOS bundle id, com.godtasker.app). Blank = endpoint returns 503.
+      - key: APPLE_CLIENT_IDS
+        sync: false
       # ── Onboarding: the system account that sends every new user a welcome task
       # (create it with `node scripts/ensure-onboarding-account.js`) ──
       - key: ONBOARDING_SENDER_EMAIL
