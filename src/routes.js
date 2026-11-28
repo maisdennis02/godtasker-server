@@ -14,6 +14,7 @@ import ChatMessageController from './app/controllers/Message/ChatMessageControll
 
 import OfferingController from './app/controllers/OfferingController';
 import GoogleSessionController from './app/controllers/GoogleSessionController';
+import AppleSessionController from './app/controllers/AppleSessionController';
 import PasswordResetController from './app/controllers/PasswordResetController';
 import SessionController from './app/controllers/SessionController';
 import SignatureController from './app/controllers/SignatureController';
@@ -59,6 +60,7 @@ routes.get('/health', (req, res) => res.json({ status: 'ok' }));
 // ─── Public routes (rate-limited against credential stuffing) ────────────────
 routes.post('/sessions', authLimiter, SessionController.store);
 routes.post('/sessions/google', authLimiter, GoogleSessionController.store);
+routes.post('/sessions/apple', authLimiter, AppleSessionController.store);
 routes.post('/users', authLimiter, UserController.store);
 routes.post('/password/forgot', authLimiter, PasswordResetController.store);
 routes.post('/password/reset', authLimiter, PasswordResetController.update);

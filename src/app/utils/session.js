@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 import authConfig from '../../config/auth';
 
-// Shared by every login path (password, Google) so all of them return the
+// Shared by every login path (password, Google, Apple) so all of them return the
 // exact same `{ user, token }` shape and the clients can't tell them apart.
 export function signSessionToken(userId) {
   return jwt.sign({ id: userId }, authConfig.secret, {
@@ -42,7 +42,8 @@ export function buildSession(user) {
       instagram,
       linkedin,
       bio,
-      // Lets clients hide the "current password" step for Google-only accounts.
+      // Lets clients hide the "current password" step for accounts created
+      // through Google or Apple, which have no password yet.
       has_password: !!user.password_hash,
     },
     token: signSessionToken(id),

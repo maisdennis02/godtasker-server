@@ -28,6 +28,7 @@ class User extends Model {
         notification_token: Sequelize.STRING,
         locale: Sequelize.STRING,
         google_id: Sequelize.STRING,
+        apple_id: Sequelize.STRING,
         last_client: Sequelize.STRING,
         last_seen_at: Sequelize.DATE,
         flag_count: Sequelize.INTEGER,
@@ -81,6 +82,7 @@ class User extends Model {
     delete values.password_reset_attempts;
     delete values.notification_token;
     delete values.google_id;
+    delete values.apple_id;
     delete values.last_client;
     delete values.last_seen_at;
     return values;
